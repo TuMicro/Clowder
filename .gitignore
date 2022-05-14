@@ -1,0 +1,15 @@
+/.idea
+/node_modules
+/build
+/tsconfig.tsbuildinfo
+.env
+/outmarkets
+/outfiles
+
+
+allPairs_bsc.json
+
+#Hardhat files
+cache
+artifacts
+typechain-types

@@ -1,0 +1,41 @@
+{
+  "name": "@turuta/clowder",
+  "version": "0.0.1",
+  "description": "",
+  "engines": {
+    "node": "16"
+  },
+  "author": "",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.5",
+    "@nomiclabs/hardhat-ganache": "^2.0.1",
+    "@nomiclabs/hardhat-waffle": "^2.0.3",
+    "@typechain/ethers-v5": "^9.0.0",
+    "@typechain/hardhat": "^5.0.0",
+    "@types/chai": "^4.3.0",
+    "@types/lodash": "^4.14.165",
+    "@types/mocha": "^9.1.0",
+    "@types/node": "^14.18.12",
+    "@typescript-eslint/eslint-plugin": "^5.10.0",
+    "@typescript-eslint/eslint-plugin-tslint": "^5.10.0",
+    "@typescript-eslint/parser": "^5.10.0",
+    "chai": "^4.3.6",
+    "chai-bn": "^0.3.1",
+    "dotenv": "^14.3.2",
+    "eslint": "^8.7.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-plugin-import": "^2.25.4",
+    "ethereum-waffle": "^3.4.0",
+    "ethers": "^5.6.5",
+    "hardhat": "^2.9.1",
+    "hardhat-gas-reporter": "^1.0.8",
+    "mocha": "^9.1.3",
+    "nyc": "^15.1.0",
+    "ts-node": "^10.5.0",
+    "typechain": "^7.0.1",
+    "typescript": "^4.1.2"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.6.0"
+  }
+}
