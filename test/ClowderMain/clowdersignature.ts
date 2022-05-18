@@ -22,6 +22,7 @@ export class ClowderSignature {
         { name: "signer", type: "address" },
 
         { name: "collection", type: "address" },
+        { name: "executionId", type: "uint256" },
         { name: "contribution", type: "uint256" },
         { name: "buyPrice", type: "uint256" },
         { name: "buyPriceEndTime", type: "uint256" },

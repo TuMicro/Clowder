@@ -10,6 +10,7 @@ struct BuyOrderV1 {
 
     // buy order parameters
     address collection; // collection address
+    uint256 executionId; // buy order execution id
     uint256 contribution; // WETH contribution
     uint256 buyPrice; // buy WETH price
     uint256 buyPriceEndTime; // order expiration time
@@ -33,7 +34,7 @@ struct BuyOrderV1 {
  * @notice
  */
 library BuyOrderV1Functions {
-    bytes32 internal constant PASSIVE_BUY_ORDER_HASH = 0xa54eff4796fe7239647122583c0fd8e6a9bd0fafd581017f7ad43beecc47f637;
+    bytes32 internal constant PASSIVE_BUY_ORDER_HASH = 0x72e794cb40f2ebfd460c7e8f21afeacac61a902963a831638aeff99e28bc690f;
 
     function hash(BuyOrderV1 memory passiveOrder) internal pure returns (bytes32) {
         return
@@ -42,6 +43,7 @@ library BuyOrderV1Functions {
                     PASSIVE_BUY_ORDER_HASH,
                     passiveOrder.signer,
                     passiveOrder.collection,
+                    passiveOrder.executionId,
                     passiveOrder.contribution,
                     passiveOrder.buyPrice,
                     passiveOrder.buyPriceEndTime,

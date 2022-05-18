@@ -22,16 +22,17 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
     address public protocolFeeReceiver;
     uint256 public protocolFeeFraction; // out of 10_000
 
-    // user => nonce => state (3 states: 0 = not used, 1 = cancelled, 2...n = executionId 0.. )
-    mapping(address => mapping(uint256 => uint256)) public buyNonceState;
-    // user => nonce => isUsed
+    // user => nonce => isUsedBuyNonce
+    mapping(address => mapping(uint256 => bool)) public isUsedBuyNonce;
+    // user => nonce => isUsedSellNonce
     mapping(address => mapping(uint256 => bool)) public isUsedSellNonce;
     // buyer => executionId => real contribution
     mapping(address => mapping(uint256 => uint256)) public realContributions;
-    Execution[] public executions; // preferring array for better code clarity
+    // executionId => Execution
+    mapping(uint256 => Execution) executions;
 
     struct Execution {
-        address collection;
+        address collection; // zero to evaluate as non-existant
         uint256 buyPrice;
         uint256 tokenId;
     }
@@ -59,15 +60,21 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
     }
 
     function cancelBuyOrders(uint256[] calldata buyOrderNonces) external {
-        require(buyOrderNonces.length > 0, "Cancel: Must provide at least one nonce");
+        require(
+            buyOrderNonces.length > 0,
+            "Cancel: Must provide at least one nonce"
+        );
 
         for (uint256 i = 0; i < buyOrderNonces.length; i++) {
-            buyNonceState[msg.sender][buyOrderNonces[i]] = 1; // cancelled
+            isUsedBuyNonce[msg.sender][buyOrderNonces[i]] = true; // used
         }
     }
-    
+
     function cancelSellOrders(uint256[] calldata sellOrderNonces) external {
-        require(sellOrderNonces.length > 0, "Cancel: Must provide at least one nonce");
+        require(
+            sellOrderNonces.length > 0,
+            "Cancel: Must provide at least one nonce"
+        );
 
         for (uint256 i = 0; i < sellOrderNonces.length; i++) {
             isUsedSellNonce[msg.sender][sellOrderNonces[i]] = true; // cancelled
@@ -109,6 +116,18 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
         uint256 protocolFee = (protocolFeeFraction * executorPrice) / 10_000;
         uint256 price = executorPrice + protocolFee;
         address collection = buyOrders[0].collection;
+        uint256 executionId = buyOrders[0].executionId;
+
+        require(
+            executions[executionId].collection == address(0),
+            "Execute: Execution already executed"
+        );
+        // creating the execution object inmediately (extra measure to prevent reentrancy)
+        executions[executionId] = Execution({
+            collection: collection,
+            buyPrice: price,
+            tokenId: tokenId
+        });
 
         uint256 protocolFeeTransferred = 0;
         uint256 executorPriceTransferred = 0;
@@ -118,11 +137,11 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             BuyOrderV1 calldata order = buyOrders[i];
             // Validate order nonce usability
             require(
-                buyNonceState[order.signer][order.buyNonce] == 0,
+                !isUsedBuyNonce[order.signer][order.buyNonce],
                 "Order nonce is unusable"
             );
-            // Update order nonce storing the executionId
-            buyNonceState[order.signer][order.buyNonce] = executions.length + 2;
+            // Invalidating order nonce inmediately (to avoid re-use/reentrancy)
+            isUsedBuyNonce[order.signer][order.buyNonce] = true;
             // Validate order signature
             bytes32 orderHash = order.hash();
             require(
@@ -145,6 +164,11 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             require(
                 order.collection == collection,
                 "Order collection mismatch"
+            );
+            // Validate executionId
+            require(
+                order.executionId == executionId,
+                "Order executionId mismatch"
             );
 
             uint256 contribution = order.contribution;
@@ -169,12 +193,11 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             executorPriceTransferred += executorPriceAmount;
             _safeTransferWETH(order.signer, msg.sender, executorPriceAmount);
 
-            // assign the real contribution to the signer
+            // adding to the real contribution of the signer
             uint256 realContribution = protocolWethAmount + executorPriceAmount;
-            realContributions[order.signer][
-                executions.length // the execution struct is created after the loop
-            ] = realContribution;
-        }
+            realContributions[order.signer][executionId] += realContribution;
+
+        } // ends the orders for loop
 
         // validating that we transferred the correct amounts of WETH
         require(
@@ -184,15 +207,6 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
         require(
             executorPriceTransferred == executorPrice,
             "Executor price not transferred correctly"
-        );
-
-        // creating the execution object
-        executions.push(
-            Execution({
-                collection: collection,
-                buyPrice: price,
-                tokenId: tokenId
-            })
         );
 
         // transferring the NFT
@@ -224,9 +238,5 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
         if (amount != 0) {
             IERC20(WETH).safeTransferFrom(from, to, amount);
         }
-    }
-
-    function executionsLength() external view returns (uint) {
-        return executions.length;
     }
 }

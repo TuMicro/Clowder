@@ -8,7 +8,7 @@ struct SellOrderV1 {
     address signer; // order signer
 
     // sell order parameters
-    uint256 buyNonce; // for getting the executionId
+    uint256 executionId; // buy order execution id
     uint256 sellPrice; // sell WETH price 
     uint256 sellPriceEndTime; // sell order expiration time
     uint256 sellNonce;
@@ -32,7 +32,7 @@ library SellOrderV1Functions {
                 abi.encode(
                     PASSIVE_SELL_ORDER_HASH,
                     passiveOrder.signer,
-                    passiveOrder.buyNonce,
+                    passiveOrder.executionId,
                     passiveOrder.sellPrice,
                     passiveOrder.sellPriceEndTime,
                     passiveOrder.sellNonce

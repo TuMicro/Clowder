@@ -8,7 +8,6 @@ npx hardhat compile
 npx hardhat test
 ```
 
-## Deployment notes
+## Notes
 
-Before deployment don't forget to:
-* Run the order hash generation scripts (signature.ts) and paste the output in the solidity order libraries.
+* If you change the Order structs don't forget to update its values on the test files and update the scheme hash in solidity. You can get the schemes hashes from the first lines of `npx hardhat test`. Otherwise tests will throw `'Signature: Invalid'`

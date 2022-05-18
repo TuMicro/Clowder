@@ -5,6 +5,7 @@ export interface BuyOrderV1Basic {
 
   // buy order parameters
   readonly collection: string; // collection address
+  readonly executionId: BigNumber; // collection address
   readonly contribution: BigNumber; // WETH contribution
   readonly buyPrice: BigNumber; // buy WETH price
   readonly buyPriceEndTime: BigNumber; // order expiration time

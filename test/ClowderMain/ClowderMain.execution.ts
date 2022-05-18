@@ -21,8 +21,8 @@ describe("Execution function", () => {
   it("Must respect the order buyPrice", async () => {
     const { clowderMain, thirdParty, eip712Domain, nonOwner, feeFraction } = deployOutputs;
 
-    const initialNonceState = await clowderMain.buyNonceState(thirdParty.address, 0);
-    expect(initialNonceState).to.equal(0);
+    const initialNonceState = await clowderMain.isUsedBuyNonce(thirdParty.address, 0);
+    expect(initialNonceState).to.equal(false);
 
     const executionPrice = ETHER.mul(10);
     const protocolFee = executionPrice.mul(feeFraction).div(10_000);
@@ -36,11 +36,14 @@ describe("Execution function", () => {
       value: contribution
     });
 
+    const buyPrice = ETHER.mul(40);
+    const executionId = BigNumber.from(0);
     const buyOrderSigned = await ClowderSignature.signBuyOrder({
       signer: thirdParty.address,
       collection: DOODLES_ADDRESS,
+      executionId,
       contribution,
-      buyPrice: ETHER.mul(40),
+      buyPrice,
       buyNonce: BigNumber.from(0),
       buyPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
 
@@ -58,17 +61,28 @@ describe("Execution function", () => {
       clowderMain.address,
       MAX_UINT256);
 
+    // testing price rejection
+    const something = BigNumber.from(10); // 10 wei
+    const bigEnoughExecutionPrice = buyPrice.mul(10_000).div(feeFraction.add(10_000)).add(something);
+    const bigEnoughWholePrice = bigEnoughExecutionPrice.mul(feeFraction.add(10_000)).div(10_000);
+    expect(bigEnoughWholePrice.gt(buyPrice)).to.be.true;
     await expect(clowderMain.connect(nonOwner).executeOnPassiveBuyOrders(
       [buyOrderSigned],
-      ETHER.mul(50), // bigger than the 40 eth price specified in the buy order
+      bigEnoughExecutionPrice, // price is bigger than the 40 eth price specified in the buy order
       1)).to.be.revertedWith("Order can't accept price");
+
+    // testing nonce rejection
+    await expect(clowderMain.connect(nonOwner).executeOnPassiveBuyOrders(
+      [buyOrderSigned, buyOrderSigned], // using the same nonce twice
+      executionPrice,
+      1)).to.be.revertedWith("Order nonce is unusable");
 
     await expect(clowderMain.connect(nonOwner).executeOnPassiveBuyOrders(
       [buyOrderSigned],
       executionPrice,
       1)).to.be.revertedWith("ERC721: transfer caller is not owner nor approved");
 
-    // TODO: test NFT transfer part
+    // TODO: test the NFT transfer
   });
 
   it("Must transfer the required amounts and NFT", async () => {
