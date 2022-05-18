@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT (taken from LooksRareExchange)
 pragma solidity >=0.8.4;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";

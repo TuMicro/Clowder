@@ -7,3 +7,8 @@ Usage:
 npx hardhat compile
 npx hardhat test
 ```
+
+## Deployment notes
+
+Before deployment don't forget to:
+* Run the order hash generation scripts (signature.ts) and paste the output in the solidity order libraries.

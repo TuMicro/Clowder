@@ -8,17 +8,19 @@ struct BuyOrderV1 {
     
     address signer; // order signer
 
+    // buy order parameters
     address collection; // collection address
-    uint256 buyPrice; // buy WETH price
     uint256 contribution; // WETH contribution
-    uint256 nonce; // for differentiating orders (it is not possible to re-use the nonce)
+    uint256 buyPrice; // buy WETH price
     uint256 buyPriceEndTime; // order expiration time
+    uint256 buyNonce; // for differentiating orders (it is not possible to re-use the nonce)
 
     // sell order parameters (it you don't want to 
     // set this out you can set a very high price
     // or an expired time)
     uint256 sellPrice; // sell WETH price 
     uint256 sellPriceEndTime; // sell order expiration time
+    uint256 sellNonce;
 
     // signature parameters
     uint8 v;
@@ -31,7 +33,7 @@ struct BuyOrderV1 {
  * @notice
  */
 library BuyOrderV1Functions {
-    bytes32 internal constant PASSIVE_BUY_ORDER_HASH = "TODO: fill this";
+    bytes32 internal constant PASSIVE_BUY_ORDER_HASH = 0xa54eff4796fe7239647122583c0fd8e6a9bd0fafd581017f7ad43beecc47f637;
 
     function hash(BuyOrderV1 memory passiveOrder) internal pure returns (bytes32) {
         return
@@ -40,12 +42,13 @@ library BuyOrderV1Functions {
                     PASSIVE_BUY_ORDER_HASH,
                     passiveOrder.signer,
                     passiveOrder.collection,
-                    passiveOrder.buyPrice,
                     passiveOrder.contribution,
-                    passiveOrder.nonce,
+                    passiveOrder.buyPrice,
                     passiveOrder.buyPriceEndTime,
+                    passiveOrder.buyNonce,
                     passiveOrder.sellPrice,
-                    passiveOrder.sellPriceEndTime
+                    passiveOrder.sellPriceEndTime,
+                    passiveOrder.sellNonce
                 )
             );
     }

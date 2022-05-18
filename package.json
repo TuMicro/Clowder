@@ -6,6 +6,9 @@
     "node": "16"
   },
   "author": "",
+  "scripts": {
+    "genOrderHashes": "npx ts-node --files --project tsconfig.json test/ClowderMain/signature.script.ts"
+  },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.5",
     "@nomiclabs/hardhat-ganache": "^2.0.1",

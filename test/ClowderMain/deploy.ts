@@ -1,8 +1,10 @@
+import { TypedDataDomain } from "@ethersproject/abstract-signer";
 import type { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { BigNumber } from "ethers";
 import { artifacts, ethers, waffle } from "hardhat";
 import type { Artifact } from "hardhat/types";
 import { ClowderMain } from "../../typechain-types";
+import { ClowderSignature } from "./clowdersignature";
 
 export const WETH_ADDRESS_FOR_TESTING = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 export const DEFAULT_FEE_FRACTION = BigNumber.from(1); // out of 10k
@@ -14,6 +16,10 @@ export interface DeployOutputs {
   feeReceiver: SignerWithAddress;
   feeFraction: BigNumber;
   clowderMain: ClowderMain;
+
+  chainId: number,
+
+  eip712Domain: TypedDataDomain,
 }
 
 export async function deployForTests(): Promise<DeployOutputs> {
@@ -25,6 +31,9 @@ export async function deployForTests(): Promise<DeployOutputs> {
       feeReceiver.address,
       DEFAULT_FEE_FRACTION,
     ]);
+
+  const network = await ethers.provider.getNetwork();
+  
   return {
     owner,
     nonOwner,
@@ -32,5 +41,8 @@ export async function deployForTests(): Promise<DeployOutputs> {
     feeReceiver,
     feeFraction: DEFAULT_FEE_FRACTION,
     clowderMain,
+
+    chainId: network.chainId,
+    eip712Domain: ClowderSignature.getDomain(network.chainId, clowderMain.address),
   }
 }

@@ -9,6 +9,7 @@ import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {BuyOrderV1} from "./libraries/passiveorders/BuyOrderV1.sol";
+import {SellOrderV1} from "./libraries/passiveorders/SellOrderV1.sol";
 import {SignatureChecker} from "./libraries/SignatureChecker.sol";
 import {NftCollectionFunctions} from "./libraries/NftCollection.sol";
 
@@ -21,9 +22,13 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
     address public protocolFeeReceiver;
     uint256 public protocolFeeFraction; // out of 10_000
 
-    mapping(address => mapping(uint256 => bool)) public isUsedNonce;
-    Execution[] public executions;
+    // user => nonce => state (3 states: 0 = not used, 1 = cancelled, 2...n = executionId 0.. )
+    mapping(address => mapping(uint256 => uint256)) public buyNonceState;
+    // user => nonce => isUsed
+    mapping(address => mapping(uint256 => bool)) public isUsedSellNonce;
+    // buyer => executionId => real contribution
     mapping(address => mapping(uint256 => uint256)) public realContributions;
+    Execution[] public executions; // preferring array for better code clarity
 
     struct Execution {
         address collection;
@@ -51,6 +56,22 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
                 address(this)
             )
         );
+    }
+
+    function cancelBuyOrders(uint256[] calldata buyOrderNonces) external {
+        require(buyOrderNonces.length > 0, "Cancel: Must provide at least one nonce");
+
+        for (uint256 i = 0; i < buyOrderNonces.length; i++) {
+            buyNonceState[msg.sender][buyOrderNonces[i]] = 1; // cancelled
+        }
+    }
+    
+    function cancelSellOrders(uint256[] calldata sellOrderNonces) external {
+        require(sellOrderNonces.length > 0, "Cancel: Must provide at least one nonce");
+
+        for (uint256 i = 0; i < sellOrderNonces.length; i++) {
+            isUsedSellNonce[msg.sender][sellOrderNonces[i]] = true; // cancelled
+        }
     }
 
     /**
@@ -83,7 +104,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
         uint256 executorPrice,
         uint256 tokenId
     ) external nonReentrant {
-        require(buyOrders.length > 0, "Execute: Cannot be empty");
+        require(buyOrders.length > 0, "Execute: Must have at least one order");
 
         uint256 protocolFee = (protocolFeeFraction * executorPrice) / 10_000;
         uint256 price = executorPrice + protocolFee;
@@ -97,11 +118,11 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             BuyOrderV1 calldata order = buyOrders[i];
             // Validate order nonce usability
             require(
-                !isUsedNonce[order.signer][order.nonce],
+                buyNonceState[order.signer][order.buyNonce] == 0,
                 "Order nonce is unusable"
             );
-            // Update order nonce as used
-            isUsedNonce[order.signer][order.nonce] = true;
+            // Update order nonce storing the executionId
+            buyNonceState[order.signer][order.buyNonce] = executions.length + 2;
             // Validate order signature
             bytes32 orderHash = order.hash();
             require(
@@ -174,7 +195,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             })
         );
 
-        // transfer the NFT
+        // transferring the NFT
         NftCollectionFunctions.transferNft(
             collection,
             msg.sender,
@@ -183,13 +204,29 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
         );
     }
 
+    function executeOnPassiveSellOrders(
+        BuyOrderV1[] calldata buyOrders,
+        SellOrderV1[] calldata sellOrders,
+        uint256 executorPrice
+    ) external nonReentrant {
+        require(
+            buyOrders.length + sellOrders.length > 0,
+            "ExecuteSell: Cannot be empty"
+        );
+        revert("TODO: Implement");
+    }
+
     function _safeTransferWETH(
         address from,
         address to,
         uint256 amount
     ) internal {
-        if (to != address(0) && amount != 0) {
+        if (amount != 0) {
             IERC20(WETH).safeTransferFrom(from, to, amount);
         }
+    }
+
+    function executionsLength() external view returns (uint) {
+        return executions.length;
     }
 }
