@@ -7,7 +7,7 @@ import { getUnixTimestamp, ONE_DAY_IN_SECONDS } from "../constants/time";
 import { BuyOrderV1, BuyOrderV1Basic } from "./model";
 import { formatEther } from "ethers/lib/utils";
 
-describe("Execution function", () => {
+describe("Execution functions", () => {
   let deployOutputs: DeployOutputs;
   let buyOrder: BuyOrderV1Basic;
   let buyOrderSigned: BuyOrderV1;
@@ -120,7 +120,7 @@ describe("Execution function", () => {
     )).to.be.revertedWith("Order nonce is unusable");
   });
 
-  it("Must transfer the NFT and required amounts. Must be able to sell.", async () => {
+  it("Must transfer the NFT and required amounts. Must be able to sell", async () => {
     const { clowderMain, feeReceiver, owner,
       testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
       wethHolder, eip712Domain, thirdParty } = deployOutputs;
@@ -212,5 +212,30 @@ describe("Execution function", () => {
     await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
       [buyOrderSigned], sellExecutionPrice
     )).to.be.revertedWith("ExecuteSell: Execution already sold");
+  });
+
+  it("Must allow sole owner to claim the NFT", async () => {
+    const { clowderMain, feeReceiver, owner, nonOwner,
+      testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
+      wethHolder, eip712Domain, thirdParty } = deployOutputs;
+
+    await clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
+      [buyOrderSigned],
+      executionPrice,
+      testERC721TokenId
+    );
+
+    await clowderMain.connect(thirdParty).claimNft(buyOrder.executionId, nonOwner.address);
+    expect(await testERC721.ownerOf(testERC721TokenId)).to.eq(nonOwner.address);
+
+    // testing executionId rejection
+    await expect(clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
+      [buyOrderSigned],
+      executionPrice,
+      testERC721TokenId
+    )).to.be.revertedWith("Execute: Id already executed");
+    await expect(clowderMain.connect(thirdParty).claimNft(buyOrder.executionId, nonOwner.address)
+    ).to.be.revertedWith("ClaimNft: Execution already sold");
+    
   });
 })

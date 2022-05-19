@@ -368,6 +368,33 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
         );
     }
 
+    function claimNft(uint256 executionId, address to) external nonReentrant {
+        Execution memory execution = executions[executionId];
+        require(
+            execution.collection != address(0),
+            "ClaimNft: Execution doesn't exist"
+        );
+        require(!execution.sold, "ClaimNft: Execution already sold");
+        /* 
+        * Invalidating immediately (extra measure to prevent reentrancy)
+        * TODO: maybe we can zero the execution struct instead (?),
+        * that way we save gas and also allow re-using the executionId
+        */
+        executions[executionId].sold = true; 
+        // validating real contribution
+        uint256 realContribution = realContributions[msg.sender][executionId];
+        require(execution.buyPrice == realContribution, "ClaimNft: wrong real contribution");
+        // just for claiming gas deductions
+        realContributions[msg.sender][executionId] = 0;
+        // transferring the NFT
+        NftCollectionFunctions.transferNft(
+            execution.collection,
+            address(this),
+            to,
+            execution.tokenId
+        );
+    }
+
     function _safeTransferWETH(
         address from,
         address to,
