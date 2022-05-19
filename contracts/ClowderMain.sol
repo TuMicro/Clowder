@@ -258,6 +258,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
         require(orders.length > 0, "ExecuteSell: Must have at least one order");
 
         uint256 protocolFee = (protocolFeeFractionFromSelling * executorPrice) /
+            10_000;
         uint256 price = executorPrice - protocolFee;
         address collection = orders[0].collection;
         uint256 executionId = orders[0].executionId;
