@@ -21,6 +21,9 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
 
     address public protocolFeeReceiver;
     uint256 public protocolFeeFraction; // out of 10_000
+    uint256 public protocolFeeFractionFromSelling; // out of 10_000
+    uint256 public minConsensusForSellingOverOrEqualBuyPrice = 5_000; // out of 10_000
+    uint256 public minConsensusForSellingUnderBuyPrice = 10_000; // out of 10_000
 
     // user => nonce => isUsedBuyNonce
     mapping(address => mapping(uint256 => bool)) public isUsedBuyNonce;
@@ -35,6 +38,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
         address collection; // zero to evaluate as non-existant
         uint256 buyPrice;
         uint256 tokenId;
+        bool sold;
     }
 
     constructor(
@@ -104,6 +108,36 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
     }
 
     /**
+     * @notice [onlyOwner] Change the protocol fee fraction from selling
+     * @param _protocolFeeFractionFromSelling new fee fraction (out of 10_000)
+     */
+    function changeProtocolFeeFractionFromSelling(
+        uint256 _protocolFeeFractionFromSelling
+    ) external onlyOwner {
+        protocolFeeFractionFromSelling = _protocolFeeFractionFromSelling;
+    }
+
+    /**
+     * @notice [onlyOwner] Change the min consensus for selling over or equal to buy price
+     * @param _minConsensusForSellingOverOrEqualBuyPrice new min consensus (out of 10_000)
+     */
+    function changeMinConsensusForSellingOverOrEqualBuyPrice(
+        uint256 _minConsensusForSellingOverOrEqualBuyPrice
+    ) external onlyOwner {
+        minConsensusForSellingOverOrEqualBuyPrice = _minConsensusForSellingOverOrEqualBuyPrice;
+    }
+
+    /**
+     * @notice [onlyOwner] Change the min consensus for selling under buy price
+     * @param _minConsensusForSellingUnderBuyPrice new min consensus (out of 10_000)
+     */
+    function changeMinConsensusForSellingUnderBuyPrice(
+        uint256 _minConsensusForSellingUnderBuyPrice
+    ) external onlyOwner {
+        minConsensusForSellingUnderBuyPrice = _minConsensusForSellingUnderBuyPrice;
+    }
+
+    /**
      * @notice Executes on an array of passive buy orders
      */
     function executeOnPassiveBuyOrders(
@@ -126,13 +160,14 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
         executions[executionId] = Execution({
             collection: collection,
             buyPrice: price,
-            tokenId: tokenId
+            tokenId: tokenId,
+            sold: false
         });
 
         uint256 protocolFeeTransferred = 0;
         uint256 executorPriceTransferred = 0;
 
-        // validate all the buy orders
+        // validate and process all the buy orders
         for (uint256 i = 0; i < buyOrders.length; i++) {
             BuyOrderV1 calldata order = buyOrders[i];
             // Validate order nonce usability
@@ -196,7 +231,6 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             // adding to the real contribution of the signer
             uint256 realContribution = protocolWethAmount + executorPriceAmount;
             realContributions[order.signer][executionId] += realContribution;
-
         } // ends the orders for loop
 
         // validating that we transferred the correct amounts of WETH
@@ -219,15 +253,115 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
     }
 
     function executeOnPassiveSellOrders(
-        BuyOrderV1[] calldata buyOrders,
-        SellOrderV1[] calldata sellOrders,
+        BuyOrderV1[] calldata orders,
         uint256 executorPrice
     ) external nonReentrant {
+        require(orders.length > 0, "ExecuteSell: Must have at least one order");
+
+        uint256 protocolFee = (protocolFeeFractionFromSelling * executorPrice) / 10_000;
+        uint256 price = executorPrice - protocolFee;
+        address collection = orders[0].collection;
+        uint256 executionId = orders[0].executionId;
+
+        // transfering the protocol fee
+        _safeTransferWETH(msg.sender, protocolFeeReceiver, protocolFee);
+
+        Execution memory execution = executions[executionId];
         require(
-            buyOrders.length + sellOrders.length > 0,
-            "ExecuteSell: Cannot be empty"
+            execution.collection != address(0),
+            "ExecuteSell: Execution doesn't exist"
         );
-        revert("TODO: Implement");
+        require(!execution.sold, "ExecuteSell: Execution already sold");
+        // invalidating inmediately (extra measure to prevent reentrancy)
+        executions[executionId].sold = true;
+
+        uint256 realContributionExecuted = 0;
+        uint256 realContributionOnBoard = 0;
+
+        // validate and process all the sell orders
+        for (uint256 i = 0; i < orders.length; i++) {
+            BuyOrderV1 calldata order = orders[i];
+            // Validate order nonce usability
+            require(
+                !isUsedSellNonce[order.signer][order.sellNonce],
+                "Order nonce is unusable"
+            );
+            // Invalidating order nonce inmediately (to avoid re-use/reentrancy)
+            isUsedSellNonce[order.signer][order.sellNonce] = true;
+            // Validate order signature
+            bytes32 orderHash = order.hash();
+            require(
+                SignatureChecker.verify(
+                    orderHash,
+                    order.signer,
+                    order.v,
+                    order.r,
+                    order.s,
+                    EIP712_DOMAIN_SEPARATOR
+                ),
+                "Signature: Invalid"
+            );
+            // Validate the order is not expired
+            require(order.sellPriceEndTime >= block.timestamp, "Order expired");
+            // Validate collection
+            require(
+                order.collection == collection,
+                "Order collection mismatch"
+            );
+            // Validate executionId
+            require(
+                order.executionId == executionId,
+                "Order executionId mismatch"
+            );
+            // transfering the WETH to the signer
+            uint256 realContribution = realContributions[order.signer][
+                executionId
+            ];
+            uint256 proceeds = (realContribution * price) / execution.buyPrice;
+            // dust remains for the msg.sender, I think that's ok
+            _safeTransferWETH(msg.sender, order.signer, proceeds);
+            // to prevent double claiming:
+            realContributions[order.signer][executionId] = 0;
+            // to make sure that in the end we transfer to everyone
+            realContributionExecuted += realContribution;
+            // counting the "votes" in favor of this price
+            realContributionOnBoard += (order.canAcceptSellPrice(price))
+                ? realContribution
+                : 0;
+        } // ends the contributors for loop
+
+        // validating that we transferred the correct amounts of WETH
+        require(
+            realContributionExecuted == execution.buyPrice,
+            "Proceeds not transferred correctly"
+        );
+
+        // validating price consensus
+        if (price >= execution.buyPrice) {
+            // we need at least N out of 10_000 consensus
+            require(
+                realContributionOnBoard * 10_000 >=
+                    realContributionExecuted *
+                        minConsensusForSellingOverOrEqualBuyPrice,
+                "Selling over or equal buyPrice: consensus not reached"
+            );
+        } else {
+            // we need unanimity
+            require(
+                realContributionOnBoard * 10_000 >=
+                    realContributionExecuted *
+                        minConsensusForSellingUnderBuyPrice,
+                "Selling under buyPrice: consensus not reached"
+            );
+        }
+
+        // transferring the NFT
+        NftCollectionFunctions.transferNft(
+            collection,
+            address(this),
+            msg.sender,
+            execution.tokenId
+        );
     }
 
     function _safeTransferWETH(

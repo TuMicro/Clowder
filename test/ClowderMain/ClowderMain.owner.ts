@@ -12,6 +12,7 @@ describe("Owner functions", () => {
     const { owner, nonOwner, clowderMain, thirdParty } = deployOutputs;
   
     await clowderMain.connect(owner).changeProtocolFeeReceiver(owner.address);
+    expect(await clowderMain.protocolFeeReceiver()).to.equal(owner.address);
     await clowderMain.connect(owner).changeProtocolFeeReceiver(thirdParty.address);
     expect(await clowderMain.protocolFeeReceiver()).to.equal(thirdParty.address);
     await expect(clowderMain.connect(nonOwner).changeProtocolFeeReceiver(nonOwner.address))

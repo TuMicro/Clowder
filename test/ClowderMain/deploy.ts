@@ -1,12 +1,13 @@
 import { TypedDataDomain } from "@ethersproject/abstract-signer";
 import type { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
-import { BigNumber } from "ethers";
+import { BigNumber, Contract } from "ethers";
 import { artifacts, ethers, waffle } from "hardhat";
 import type { Artifact } from "hardhat/types";
-import { ClowderMain } from "../../typechain-types";
+import { ClowderMain, TestERC721 } from "../../typechain-types";
+import { WETH9_ABI } from "../constants/erc20abi";
+import { WETH_ADDRESS_FOR_TESTING } from "./addresses";
 import { ClowderSignature } from "./clowdersignature";
 
-export const WETH_ADDRESS_FOR_TESTING = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 export const DEFAULT_FEE_FRACTION = BigNumber.from(1); // out of 10k
 
 export interface DeployOutputs {
@@ -20,20 +21,39 @@ export interface DeployOutputs {
   chainId: number,
 
   eip712Domain: TypedDataDomain,
+
+  // nft
+  testERC721: TestERC721,
+  testERC721Owner: SignerWithAddress,
+  testERC721Holder: SignerWithAddress,
+  testERC721TokenId: BigNumber,
+
+  wethTokenContract: Contract;
 }
 
 export async function deployForTests(): Promise<DeployOutputs> {
-  const [owner, nonOwner, thirdParty, feeReceiver] = await ethers.getSigners();
+  const [owner, nonOwner, thirdParty, feeReceiver, testERC721Owner, testERC721Holder] = await ethers.getSigners();
   const clowderMainArtifact: Artifact = await artifacts.readArtifact("ClowderMain");
-  const clowderMain = <ClowderMain>await waffle.deployContract(owner, 
+  const clowderMain = <ClowderMain>await waffle.deployContract(owner,
     clowderMainArtifact, [
-      WETH_ADDRESS_FOR_TESTING,
-      feeReceiver.address,
-      DEFAULT_FEE_FRACTION,
-    ]);
+    WETH_ADDRESS_FOR_TESTING,
+    feeReceiver.address,
+    DEFAULT_FEE_FRACTION,
+  ]);
 
   const network = await ethers.provider.getNetwork();
-  
+
+  const testERC721Factory = await ethers.getContractFactory("TestERC721");
+  const testERC721 = await testERC721Factory.connect(testERC721Owner).deploy("TestERC721",
+    "TERC721",
+    "",
+  );
+  await testERC721.deployed();
+  // mint an NFT to the holder (with tokenId: 0)
+  await testERC721.connect(testERC721Owner).mint(testERC721Holder.address);
+
+  const wethTokenContract = new Contract(WETH_ADDRESS_FOR_TESTING, WETH9_ABI, ethers.provider);
+
   return {
     owner,
     nonOwner,
@@ -44,5 +64,13 @@ export async function deployForTests(): Promise<DeployOutputs> {
 
     chainId: network.chainId,
     eip712Domain: ClowderSignature.getDomain(network.chainId, clowderMain.address),
+
+    // nft
+    testERC721,
+    testERC721Owner,
+    testERC721Holder,
+    testERC721TokenId: BigNumber.from(0),
+
+    wethTokenContract,
   }
 }

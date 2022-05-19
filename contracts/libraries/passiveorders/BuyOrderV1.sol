@@ -8,19 +8,19 @@ struct BuyOrderV1 {
     
     address signer; // order signer
 
-    // buy order parameters
+    // general order parameters
     address collection; // collection address
     uint256 executionId; // buy order execution id
     uint256 contribution; // WETH contribution
+
+    // buy order parameters
     uint256 buyPrice; // buy WETH price
-    uint256 buyPriceEndTime; // order expiration time
+    uint256 buyPriceEndTime; // order expiration time (set 0 for omitting)
     uint256 buyNonce; // for differentiating orders (it is not possible to re-use the nonce)
 
-    // sell order parameters (it you don't want to 
-    // set this out you can set a very high price
-    // or an expired time)
+    // sell order parameters
     uint256 sellPrice; // sell WETH price 
-    uint256 sellPriceEndTime; // sell order expiration time
+    uint256 sellPriceEndTime; // sell order expiration time (set 0 for omitting)
     uint256 sellNonce;
 
     // signature parameters
@@ -57,5 +57,9 @@ library BuyOrderV1Functions {
 
     function canAcceptBuyPrice(BuyOrderV1 memory passiveOrder, uint256 price) internal pure returns (bool) {
         return passiveOrder.buyPrice >= price;
+    }
+    
+    function canAcceptSellPrice(BuyOrderV1 memory passiveOrder, uint256 price) internal pure returns (bool) {
+        return passiveOrder.sellPrice <= price;
     }
 }
