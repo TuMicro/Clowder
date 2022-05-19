@@ -154,7 +154,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
 
         require(
             executions[executionId].collection == address(0),
-            "Execute: Execution already executed"
+            "Execute: Id already executed"
         );
         // creating the execution object inmediately (extra measure to prevent reentrancy)
         executions[executionId] = Execution({
@@ -325,7 +325,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             // to make sure that in the end we transfer to everyone
             realContributionExecuted += realContribution;
             // counting the "votes" in favor of this price
-            realContributionOnBoard += (order.canAcceptSellPrice(price))
+            realContributionOnBoard += order.canAcceptSellPrice(price)
                 ? realContribution
                 : 0;
         } // ends the contributors for loop

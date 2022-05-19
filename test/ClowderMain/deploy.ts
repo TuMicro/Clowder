@@ -1,10 +1,12 @@
 import { TypedDataDomain } from "@ethersproject/abstract-signer";
 import type { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { BigNumber, Contract } from "ethers";
+import { formatEther, hexStripZeros } from "ethers/lib/utils";
 import { artifacts, ethers, waffle } from "hardhat";
 import type { Artifact } from "hardhat/types";
 import { ClowderMain, TestERC721 } from "../../typechain-types";
 import { WETH9_ABI } from "../constants/erc20abi";
+import { ETHER } from "../constants/ether";
 import { WETH_ADDRESS_FOR_TESTING } from "./addresses";
 import { ClowderSignature } from "./clowdersignature";
 
@@ -29,10 +31,12 @@ export interface DeployOutputs {
   testERC721TokenId: BigNumber,
 
   wethTokenContract: Contract;
+  wethHolder: SignerWithAddress,
 }
 
 export async function deployForTests(): Promise<DeployOutputs> {
-  const [owner, nonOwner, thirdParty, feeReceiver, testERC721Owner, testERC721Holder] = await ethers.getSigners();
+  const [owner, nonOwner, thirdParty, feeReceiver, testERC721Owner,
+    testERC721Holder, wethHolder] = await ethers.getSigners();
   const clowderMainArtifact: Artifact = await artifacts.readArtifact("ClowderMain");
   const clowderMain = <ClowderMain>await waffle.deployContract(owner,
     clowderMainArtifact, [
@@ -43,6 +47,7 @@ export async function deployForTests(): Promise<DeployOutputs> {
 
   const network = await ethers.provider.getNetwork();
 
+  // setting up the test NFT contract and NFT holder
   const testERC721Factory = await ethers.getContractFactory("TestERC721");
   const testERC721 = await testERC721Factory.connect(testERC721Owner).deploy("TestERC721",
     "TERC721",
@@ -52,7 +57,15 @@ export async function deployForTests(): Promise<DeployOutputs> {
   // mint an NFT to the holder (with tokenId: 0)
   await testERC721.connect(testERC721Owner).mint(testERC721Holder.address);
 
+  // setting up the WETH contract and WETH holder
   const wethTokenContract = new Contract(WETH_ADDRESS_FOR_TESTING, WETH9_ABI, ethers.provider);
+  await ethers.provider.send("hardhat_setBalance", [ // because eth balance is spent on tests
+    wethHolder.address,
+    hexStripZeros(ETHER.mul(10_000).toHexString()),
+  ]);
+  await wethTokenContract.connect(wethHolder).deposit({ // adding more WETH
+    value: ETHER.mul(1_000),
+  });
 
   return {
     owner,
@@ -72,5 +85,6 @@ export async function deployForTests(): Promise<DeployOutputs> {
     testERC721TokenId: BigNumber.from(0),
 
     wethTokenContract,
+    wethHolder,
   }
 }

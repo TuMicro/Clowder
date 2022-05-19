@@ -5,6 +5,7 @@ import { ClowderSignature } from "./clowdersignature";
 import { ETHER, MAX_UINT256 } from "../constants/ether";
 import { getUnixTimestamp, ONE_DAY_IN_SECONDS } from "../constants/time";
 import { BuyOrderV1, BuyOrderV1Basic } from "./model";
+import { formatEther } from "ethers/lib/utils";
 
 describe("Execution function", () => {
   let deployOutputs: DeployOutputs;
@@ -20,7 +21,7 @@ describe("Execution function", () => {
   beforeEach(async () => {
     deployOutputs = await deployForTests();
     const { clowderMain, thirdParty, eip712Domain, feeFraction,
-      testERC721, testERC721Holder, wethTokenContract } = deployOutputs;
+      testERC721, testERC721Holder, wethTokenContract, wethHolder } = deployOutputs;
 
     executionPrice = ETHER.mul(10);
     protocolFee = executionPrice.mul(feeFraction).div(10_000);
@@ -45,7 +46,7 @@ describe("Execution function", () => {
       buyPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
 
       sellPrice: ETHER.mul(30),
-      sellPriceEndTime: getUnixTimestamp().sub(ONE_DAY_IN_SECONDS),
+      sellPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
       sellNonce: BigNumber.from(0),
     };
     buyOrderSigned = await ClowderSignature.signBuyOrder(buyOrder,
@@ -64,11 +65,17 @@ describe("Execution function", () => {
       clowderMain.address,
       true,
     );
+
+    // approve the clowder contract to spend wethHolder's WETH
+    await wethTokenContract.connect(wethHolder).approve(
+      clowderMain.address,
+      MAX_UINT256
+    );
   });
 
   it("Must respect the order buyPrice", async () => {
-    const { clowderMain, thirdParty, eip712Domain, nonOwner, feeFraction,
-      testERC721, testERC721Holder, testERC721TokenId, wethTokenContract } = deployOutputs;
+    const { clowderMain, thirdParty, nonOwner, feeFraction,
+      testERC721TokenId } = deployOutputs;
 
     const initialNonceState = await clowderMain.isUsedBuyNonce(thirdParty.address, 0);
     expect(initialNonceState).to.equal(false);
@@ -99,9 +106,24 @@ describe("Execution function", () => {
 
   });
 
-  it("Must transfer the required amounts and NFT", async () => {
-    const { clowderMain, feeReceiver,
-      testERC721, testERC721Holder, testERC721TokenId, wethTokenContract } = deployOutputs;
+  it("Must reject a cancelled buy order", async () => {
+    const { clowderMain, thirdParty,
+      testERC721Holder, testERC721TokenId } = deployOutputs;
+
+    const buyOrders = [buyOrderSigned]; // signed by thirdParty
+    await clowderMain.connect(thirdParty).cancelBuyOrders(buyOrders.map(o => o.buyNonce));
+
+    await expect(clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
+      [buyOrderSigned],
+      executionPrice,
+      testERC721TokenId
+    )).to.be.revertedWith("Order nonce is unusable");
+  });
+
+  it("Must transfer the NFT and required amounts. Must be able to sell.", async () => {
+    const { clowderMain, feeReceiver, owner,
+      testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
+      wethHolder, eip712Domain, thirdParty } = deployOutputs;
 
     const nftBalanceBefore = await testERC721.balanceOf(clowderMain.address);
     const buyerWethBalanceBefore = await wethTokenContract.balanceOf(buyOrder.signer);
@@ -122,8 +144,73 @@ describe("Execution function", () => {
     // nft transfer
     expect(nftBalanceAfter.sub(nftBalanceBefore).eq(1)).to.be.true;
     // buyer WETH transfer
-    expect(buyerWethBalanceBefore.sub(buyerWethBalanceAfter).eq(price)).to.be.true;
+    const buyerContribution = buyerWethBalanceBefore.sub(buyerWethBalanceAfter);
+    expect(buyerContribution.eq(price)).to.be.true;
     // seller WETH transfer
     expect(sellerWethBalanceAfter.sub(sellerWethBalanceBefore).eq(executionPrice)).to.be.true;
+    // real contribution stored on contract
+    const realContribution = await clowderMain.realContributions(buyOrder.signer, buyOrder.executionId);
+    expect(realContribution.eq(buyerContribution)).to.be.true;
+
+    // testing executionId rejection
+    await expect(clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
+      [buyOrderSigned],
+      executionPrice,
+      testERC721TokenId
+    )).to.be.revertedWith("Execute: Id already executed");
+
+
+    // testing sell order expired rejection
+    const buyOrderExpired: BuyOrderV1Basic = {
+      ...buyOrder,
+      sellPriceEndTime: getUnixTimestamp().sub(ONE_DAY_IN_SECONDS),
+    };
+    const buyOrderExpiredSigned = await ClowderSignature.signBuyOrder(
+      buyOrderExpired,
+      eip712Domain,
+      thirdParty
+    );
+    await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
+      [buyOrderExpiredSigned],
+      buyOrder.sellPrice.mul(2),
+    )).to.be.revertedWith('Order expired');
+
+    // testing sell order nonce used rejection
+    await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
+      [buyOrderSigned, buyOrderSigned],
+      buyOrder.sellPrice.mul(2),
+    )).to.be.revertedWith("Order nonce is unusable");
+
+    // testing sell order price rejection
+    await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
+      [buyOrderSigned],
+      BigNumber.from(0),
+    )).to.be.revertedWith("Selling under buyPrice: consensus not reached");
+
+    // Must be able to sell
+    const protocolSellingFeeFraction = BigNumber.from(10); // out of 10_000
+    await clowderMain.connect(owner).changeProtocolFeeFractionFromSelling(protocolSellingFeeFraction);
+    const acceptedSellPrice = buyOrder.sellPrice;
+    const sellExecutionPrice = acceptedSellPrice.mul(10_000).div(BigNumber.from(10_000)
+      .sub(protocolSellingFeeFraction)).add(1); // we add 1 for rounding error
+    const sellProtocolFee = sellExecutionPrice.mul(protocolSellingFeeFraction).div(10_000);
+    const actualSellPrice = sellExecutionPrice.sub(sellProtocolFee);
+    // testing calculations:
+    expect(actualSellPrice.gte(acceptedSellPrice)).to.be.true;
+    expect(actualSellPrice.sub(acceptedSellPrice).lt(10)).to.be.true; // less than 10wei difference
+    // executing the sell
+    await clowderMain.connect(wethHolder).executeOnPassiveSellOrders([buyOrderSigned], sellExecutionPrice);
+    // making sure the new NFT owner is the wethHolder
+    expect(await testERC721.ownerOf(testERC721TokenId)).to.eq(wethHolder.address);
+    // making sure the original buyer receives the correct amount of proceeds (WETH)
+    const buyerWethBalanceAfterSelling = await wethTokenContract.balanceOf(buyOrder.signer);
+    const groupBuyerProceeds = buyerWethBalanceAfterSelling.sub(buyerWethBalanceAfter);
+    const groupBuyerProceedsExpected = realContribution.mul(actualSellPrice).div(price);
+    expect(groupBuyerProceeds.eq(groupBuyerProceedsExpected)).to.be.true;
+
+    // testing rejection when reusing the executionId
+    await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
+      [buyOrderSigned], sellExecutionPrice
+    )).to.be.revertedWith("ExecuteSell: Execution already sold");
   });
 })
