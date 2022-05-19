@@ -9,7 +9,6 @@ import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {BuyOrderV1} from "./libraries/passiveorders/BuyOrderV1.sol";
-import {SellOrderV1} from "./libraries/passiveorders/SellOrderV1.sol";
 import {SignatureChecker} from "./libraries/SignatureChecker.sol";
 import {NftCollectionFunctions} from "./libraries/NftCollection.sol";
 
@@ -156,7 +155,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             executions[executionId].collection == address(0),
             "Execute: Id already executed"
         );
-        // creating the execution object inmediately (extra measure to prevent reentrancy)
+        // creating the execution object immediately (extra measure to prevent reentrancy)
         executions[executionId] = Execution({
             collection: collection,
             buyPrice: price,
@@ -175,7 +174,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
                 !isUsedBuyNonce[order.signer][order.buyNonce],
                 "Order nonce is unusable"
             );
-            // Invalidating order nonce inmediately (to avoid re-use/reentrancy)
+            // Invalidating order nonce immediately (to avoid re-use/reentrancy)
             isUsedBuyNonce[order.signer][order.buyNonce] = true;
             // Validate order signature
             bytes32 orderHash = order.hash();
@@ -258,7 +257,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
     ) external nonReentrant {
         require(orders.length > 0, "ExecuteSell: Must have at least one order");
 
-        uint256 protocolFee = (protocolFeeFractionFromSelling * executorPrice) / 10_000;
+        uint256 protocolFee = (protocolFeeFractionFromSelling * executorPrice) /
         uint256 price = executorPrice - protocolFee;
         address collection = orders[0].collection;
         uint256 executionId = orders[0].executionId;
@@ -272,7 +271,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             "ExecuteSell: Execution doesn't exist"
         );
         require(!execution.sold, "ExecuteSell: Execution already sold");
-        // invalidating inmediately (extra measure to prevent reentrancy)
+        // invalidating immediately (extra measure to prevent reentrancy)
         executions[executionId].sold = true;
 
         uint256 realContributionExecuted = 0;
@@ -286,7 +285,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
                 !isUsedSellNonce[order.signer][order.sellNonce],
                 "Order nonce is unusable"
             );
-            // Invalidating order nonce inmediately (to avoid re-use/reentrancy)
+            // Invalidating order nonce immediately (to avoid re-use/reentrancy)
             isUsedSellNonce[order.signer][order.sellNonce] = true;
             // Validate order signature
             bytes32 orderHash = order.hash();
@@ -318,7 +317,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
                 executionId
             ];
             uint256 proceeds = (realContribution * price) / execution.buyPrice;
-            // dust remains for the msg.sender, I think that's ok
+            // dust remains for the msg.sender, that's ok
             _safeTransferWETH(msg.sender, order.signer, proceeds);
             // to prevent double claiming:
             realContributions[order.signer][executionId] = 0;
@@ -346,7 +345,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
                 "Selling over or equal buyPrice: consensus not reached"
             );
         } else {
-            // we need unanimity
+            // we need a different consensus ratio
             require(
                 realContributionOnBoard * 10_000 >=
                     realContributionExecuted *
