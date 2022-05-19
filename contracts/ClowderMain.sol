@@ -271,6 +271,10 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             execution.collection != address(0),
             "ExecuteSell: Execution doesn't exist"
         );
+        require(
+            execution.collection == collection,
+            "ExecuteSell: Execution collection must match order's"
+        );
         require(!execution.sold, "ExecuteSell: Execution already sold");
         // invalidating immediately (extra measure to prevent reentrancy)
         executions[executionId].sold = true;
