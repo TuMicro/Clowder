@@ -187,6 +187,21 @@ describe("Execution functions", () => {
       BigNumber.from(0),
     )).to.be.revertedWith("Selling under buyPrice: consensus not reached");
 
+    // testing order collection rejection
+    const buyOrderOtherCollection: BuyOrderV1Basic = {
+      ...buyOrder,
+      collection: "0x0000000000000000000000000000000000000001",
+    };
+    const buyOrderOtherCollectionSigned = await ClowderSignature.signBuyOrder(
+      buyOrderOtherCollection,
+      eip712Domain,
+      thirdParty
+    );
+    await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
+      [buyOrderOtherCollectionSigned],
+      buyOrder.sellPrice.mul(2),
+    )).to.be.revertedWith("ExecuteSell: Execution collection must match order's");
+
     // Must be able to sell
     const protocolSellingFeeFraction = BigNumber.from(10); // out of 10_000
     await clowderMain.connect(owner).changeProtocolFeeFractionFromSelling(protocolSellingFeeFraction);
