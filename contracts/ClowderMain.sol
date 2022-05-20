@@ -9,7 +9,7 @@ import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {BuyOrderV1} from "./libraries/passiveorders/BuyOrderV1.sol";
-import {SignatureChecker} from "./libraries/SignatureChecker.sol";
+import {SignatureUtil} from "./libraries/SignatureUtil.sol";
 import {NftCollectionFunctions} from "./libraries/NftCollection.sol";
 
 contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
@@ -179,7 +179,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             // Validate order signature
             bytes32 orderHash = order.hash();
             require(
-                SignatureChecker.verify(
+                SignatureUtil.verify(
                     orderHash,
                     order.signer,
                     order.v,
@@ -295,7 +295,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             // Validate order signature
             bytes32 orderHash = order.hash();
             require(
-                SignatureChecker.verify(
+                SignatureUtil.verify(
                     orderHash,
                     order.signer,
                     order.v,
