@@ -3,7 +3,9 @@ pragma solidity >=0.8.4;
 
 using BuyOrderV1Functions for BuyOrderV1 global;
 
-// DO NOT CHANGE the struct, either create a new Order file or update the hash hardcoded below
+// DO NOT CHANGE the struct, create a new order file instead.
+// If chaging the struct is extremely necessary, don't forget to 
+// update the hash constant and hash function below.
 struct BuyOrderV1 {
     
     address signer; // order signer
