@@ -6,6 +6,8 @@ import { ETHER, MAX_UINT256 } from "../constants/ether";
 import { getUnixTimestamp, ONE_DAY_IN_SECONDS } from "../constants/time";
 import { BuyOrderV1, BuyOrderV1Basic } from "./model";
 import { formatEther } from "ethers/lib/utils";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { ethers } from "hardhat";
 
 describe("Execution functions", () => {
   let deployOutputs: DeployOutputs;
@@ -41,6 +43,7 @@ describe("Execution functions", () => {
       collection: testERC721.address,
       executionId,
       contribution,
+
       buyPrice,
       buyNonce: BigNumber.from(0),
       buyPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
@@ -230,9 +233,8 @@ describe("Execution functions", () => {
   });
 
   it("Must allow sole owner to claim the NFT", async () => {
-    const { clowderMain, feeReceiver, owner, nonOwner,
-      testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
-      wethHolder, eip712Domain, thirdParty } = deployOutputs;
+    const { clowderMain, nonOwner,
+      testERC721, testERC721Holder, testERC721TokenId, thirdParty } = deployOutputs;
 
     await clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
       [buyOrderSigned],
@@ -251,6 +253,69 @@ describe("Execution functions", () => {
     )).to.be.revertedWith("Execute: Id already executed");
     await expect(clowderMain.connect(thirdParty).claimNft(buyOrder.executionId, nonOwner.address)
     ).to.be.revertedWith("ClaimNft: Execution already sold");
-    
+
+  });
+
+  it("Must allow multiple buyers to claim the NFT", async () => {
+    for (let n_buyers = 1; n_buyers <= 10; n_buyers++) {
+      const { clowderMain, feeFraction,
+        testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
+        wethHolder, eip712Domain, thirdParty } = await deployForTests();
+
+      // approve the clowder contract to move nft holder's nfts
+      await testERC721.connect(testERC721Holder).setApprovalForAll(
+        clowderMain.address,
+        true,
+      );
+
+      const signers = (await ethers.getSigners()).slice(0, n_buyers);
+      const orderBuyPrice = ETHER.mul(10);
+      const contribution = orderBuyPrice.div(n_buyers).add(1); // +1 wei for rounding error
+      const buyNonce = BigNumber.from(0);
+      const orders = await Promise.all(signers.map(async (signer) => {
+        // getting the WETH
+        await wethTokenContract.connect(signer).deposit({
+          value: contribution
+        });
+
+        // approve the clowder contract to spend thirdParty's WETH
+        await wethTokenContract.connect(signer).approve(
+          clowderMain.address,
+          MAX_UINT256
+        );
+        const order = {
+          signer: signer.address,
+          collection: testERC721.address,
+          executionId,
+          contribution,
+
+          buyPrice: orderBuyPrice,
+          buyNonce,
+          buyPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
+
+          sellPrice: ETHER.mul(30),
+          sellPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
+          sellNonce: BigNumber.from(0),
+        };
+        const orderSigned = await ClowderSignature.signBuyOrder(order,
+          eip712Domain,
+          signer,
+        );
+        return orderSigned;
+      }));
+
+      const buyExecutionPrice = orderBuyPrice.mul(10_000).div(feeFraction.add(10_000)).add(1);
+
+      const txn = await clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
+        orders,
+        buyExecutionPrice,
+        testERC721TokenId
+      );
+      const receipt = await txn.wait();
+      const gasUsed = receipt.gasUsed;
+      // print gas used
+      console.log(`Gas used for ${n_buyers} buyers buy execution: ${gasUsed.toString()}`);
+    }
+
   });
 })
