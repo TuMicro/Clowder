@@ -213,6 +213,7 @@ describe("Execution functions", () => {
       .sub(protocolSellingFeeFraction)).add(1); // we add 1 for rounding error
     const sellProtocolFee = sellExecutionPrice.mul(protocolSellingFeeFraction).div(10_000);
     const actualSellPrice = sellExecutionPrice.sub(sellProtocolFee);
+    const protocolFeeRecieverBalanceBefore = await wethTokenContract.balanceOf(feeReceiver.address);
     // testing calculations:
     expect(actualSellPrice.gte(acceptedSellPrice)).to.be.true;
     expect(actualSellPrice.sub(acceptedSellPrice).lt(10)).to.be.true; // less than 10wei difference
@@ -227,6 +228,10 @@ describe("Execution functions", () => {
     const groupBuyerProceeds = buyerWethBalanceAfterSelling.sub(buyerWethBalanceAfter);
     const groupBuyerProceedsExpected = realContribution.mul(actualSellPrice).div(price);
     expect(groupBuyerProceeds.eq(groupBuyerProceedsExpected)).to.be.true;
+    // making sure the fee receiver receives the correct amount WETH
+    const protocolFeeRecieverBalanceAfter = await wethTokenContract.balanceOf(feeReceiver.address);
+    expect(protocolFeeRecieverBalanceAfter.sub(protocolFeeRecieverBalanceBefore).eq(
+      sellExecutionPrice.mul(protocolSellingFeeFraction).div(10_000))).to.be.true;
 
     // testing rejection when reusing the executionId
     await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
@@ -262,7 +267,7 @@ describe("Execution functions", () => {
     for (let n_buyers = 1; n_buyers <= 10; n_buyers++) {
       const { clowderMain, feeFraction,
         testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
-        wethHolder, eip712Domain, thirdParty, owner } = await deployForTests();
+        wethHolder, eip712Domain, owner } = await deployForTests();
 
       // approve the clowder contract to move nft holder's nfts
       await testERC721.connect(testERC721Holder).setApprovalForAll(
@@ -324,7 +329,8 @@ describe("Execution functions", () => {
       }));
 
       // asserting fees and consensus
-      await clowderMain.connect(owner).changeProtocolFeeFractionFromSelling(0);
+      const protocolSellingFeeFraction = BigNumber.from(0);
+      await clowderMain.connect(owner).changeProtocolFeeFractionFromSelling(protocolSellingFeeFraction);
       const minConsensusForSellingOverOrEqualBuyPrice = BigNumber.from(5_000);
       await clowderMain.connect(owner).changeMinConsensusForSellingOverOrEqualBuyPrice(minConsensusForSellingOverOrEqualBuyPrice);
 

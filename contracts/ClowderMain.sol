@@ -274,9 +274,6 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
         address collection = orders[0].collection;
         uint256 executionId = orders[0].executionId;
 
-        // transferring the protocol fee
-        _safeTransferWETH(msg.sender, protocolFeeReceiver, protocolFee);
-
         Execution storage execution = executions[executionId];
         require(
             execution.collection != address(0),
@@ -373,6 +370,9 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
 
         // transferring the WETH from the caller to Clowder
         _safeTransferWETH(msg.sender, address(this), price);
+        
+        // transferring the protocol fee
+        _safeTransferWETH(msg.sender, protocolFeeReceiver, protocolFee);
 
         // transferring the NFT
         NftCollectionFunctions.transferNft(
