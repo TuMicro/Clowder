@@ -262,7 +262,7 @@ describe("Execution functions", () => {
     for (let n_buyers = 1; n_buyers <= 10; n_buyers++) {
       const { clowderMain, feeFraction,
         testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
-        wethHolder, eip712Domain, thirdParty } = await deployForTests();
+        wethHolder, eip712Domain, thirdParty, owner } = await deployForTests();
 
       // approve the clowder contract to move nft holder's nfts
       await testERC721.connect(testERC721Holder).setApprovalForAll(
@@ -295,7 +295,7 @@ describe("Execution functions", () => {
           buyNonce,
           buyPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
 
-          sellPrice: ETHER.mul(30),
+          sellPrice: orderBuyPrice.div(2), // just for these tests
           sellPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
           sellNonce: BigNumber.from(0),
         };
@@ -307,6 +307,7 @@ describe("Execution functions", () => {
       }));
 
       const buyExecutionPrice = orderBuyPrice.mul(10_000).div(feeFraction.add(10_000)).add(1);
+      const actualPricePaidByBuyers = buyExecutionPrice.mul(feeFraction.add(10_000)).div(10_000);
 
       const txn = await clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
         orders,
@@ -314,10 +315,48 @@ describe("Execution functions", () => {
         testERC721TokenId
       );
       const receipt = await txn.wait();
-      const gasUsed = receipt.gasUsed;
       // print gas used
-      console.log(`Gas used for ${n_buyers} buyers buy execution: ${gasUsed.toString()}`);
-    }
+      console.log(`Gas used for ${n_buyers} buyers buy execution: ${receipt.gasUsed.toString()}`);
 
-  });
+      // getting the real contributions of each buyer
+      const buyersRealContributions = await Promise.all(signers.map(async (signer) => {
+        return await clowderMain.realContributions(signer.address, orders[0].executionId);
+      }));
+
+      // asserting fees and consensus
+      await clowderMain.connect(owner).changeProtocolFeeFractionFromSelling(0);
+      const minConsensusForSellingOverOrEqualBuyPrice = BigNumber.from(5_000);
+      await clowderMain.connect(owner).changeMinConsensusForSellingOverOrEqualBuyPrice(minConsensusForSellingOverOrEqualBuyPrice);
+
+      // approve the clowder contract to spend wethHolder's WETH
+      await wethTokenContract.connect(wethHolder).approve(
+        clowderMain.address,
+        MAX_UINT256
+      );
+
+      let votes = BigNumber.from(0);
+      let slice_of_seller_votes = 0;
+      while (votes.mul(10_000).lt(actualPricePaidByBuyers.mul(minConsensusForSellingOverOrEqualBuyPrice))) {
+        votes = votes.add(buyersRealContributions[slice_of_seller_votes]);
+        slice_of_seller_votes++;
+      }
+
+      // testing rejection when not achieving consensus
+      const revertMessage = slice_of_seller_votes - 1 <= 0 ?
+        "ExecuteSell: Must have at least one order" :
+        "Selling over or equal buyPrice: consensus not reached";
+      await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
+        orders.slice(0, slice_of_seller_votes - 1), // not enough votes
+        actualPricePaidByBuyers,
+      )).to.be.revertedWith(revertMessage);
+
+      const sellTxn = await clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
+        orders.slice(0, slice_of_seller_votes),
+        actualPricePaidByBuyers,
+      );
+      const sellReceipt = await sellTxn.wait();
+      // print gas used
+      console.log(`Gas used for ${n_buyers} buyers with ${slice_of_seller_votes} voters sell execution: ${sellReceipt.gasUsed.toString()}`);
+    }
+  }).timeout(2 * 60 * 1000);
 })

@@ -64,7 +64,7 @@ export async function deployForTests(): Promise<DeployOutputs> {
     hexStripZeros(ETHER.mul(10_000).toHexString()),
   ]);
   await wethTokenContract.connect(wethHolder).deposit({ // adding more WETH
-    value: ETHER.mul(1_000),
+    value: ETHER.mul(5_000),
   });
 
   return {
