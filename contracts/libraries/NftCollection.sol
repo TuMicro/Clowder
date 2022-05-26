@@ -9,7 +9,6 @@ library NftCollectionFunctions {
 
     // interface IDs
     bytes4 public constant INTERFACE_ID_ERC721 = 0x80ac58cd;
-    bytes4 public constant INTERFACE_ID_ERC1155 = 0xd9b67a26;
 
     function transferNft(
         address collection,
@@ -19,10 +18,8 @@ library NftCollectionFunctions {
     ) internal {
         if (IERC165(collection).supportsInterface(INTERFACE_ID_ERC721)) {
             IERC721(collection).safeTransferFrom(from, to, tokenId);
-        } else if (IERC165(collection).supportsInterface(INTERFACE_ID_ERC1155)) {
-            IERC1155(collection).safeTransferFrom(from, to, tokenId, 1, "");
         } else {
-            revert("Collection does not support ERC721 or ERC1155");
+            revert("Collection does not support ERC721");
         }
     }
 }

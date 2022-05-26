@@ -188,7 +188,7 @@ describe("Execution functions", () => {
     await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
       [buyOrderSigned],
       BigNumber.from(0),
-    )).to.be.revertedWith("Selling under buyPrice: consensus not reached");
+    )).to.be.revertedWith("Order can't accept price");
 
     // testing order collection rejection
     const buyOrderOtherCollection: BuyOrderV1Basic = {
@@ -220,6 +220,8 @@ describe("Execution functions", () => {
     await clowderMain.connect(wethHolder).executeOnPassiveSellOrders([buyOrderSigned], sellExecutionPrice);
     // making sure the new NFT owner is the wethHolder
     expect(await testERC721.ownerOf(testERC721TokenId)).to.eq(wethHolder.address);
+    // the original buyer claims the WETH
+    await clowderMain.connect(thirdParty).claimProceeds([buyOrderSigned.executionId], thirdParty.address);
     // making sure the original buyer receives the correct amount of proceeds (WETH)
     const buyerWethBalanceAfterSelling = await wethTokenContract.balanceOf(buyOrder.signer);
     const groupBuyerProceeds = buyerWethBalanceAfterSelling.sub(buyerWethBalanceAfter);

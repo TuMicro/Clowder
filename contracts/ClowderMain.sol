@@ -3,6 +3,7 @@ pragma solidity >=0.8.4;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
@@ -38,6 +39,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
         uint256 buyPrice;
         uint256 tokenId;
         bool sold;
+        uint256 sellPrice;
     }
 
     constructor(
@@ -160,7 +162,8 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             collection: collection,
             buyPrice: price,
             tokenId: tokenId,
-            sold: false
+            sold: false,
+            sellPrice: 0
         });
 
         uint256 protocolFeeTransferred = 0;
@@ -207,7 +210,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
 
             uint256 contribution = order.contribution;
 
-            // transfering the protocol fee
+            // transferring the protocol fee
             uint256 protocolWethAmount = Math.min(
                 protocolFee - protocolFeeTransferred,
                 contribution
@@ -219,7 +222,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
                 protocolWethAmount
             );
 
-            // transfering the protocol executor price
+            // transferring the protocol executor price
             uint256 executorPriceAmount = Math.min(
                 executorPrice - executorPriceTransferred,
                 contribution - protocolWethAmount
@@ -263,10 +266,10 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
         address collection = orders[0].collection;
         uint256 executionId = orders[0].executionId;
 
-        // transfering the protocol fee
+        // transferring the protocol fee
         _safeTransferWETH(msg.sender, protocolFeeReceiver, protocolFee);
 
-        Execution memory execution = executions[executionId];
+        Execution storage execution = executions[executionId];
         require(
             execution.collection != address(0),
             "ExecuteSell: Execution doesn't exist"
@@ -277,9 +280,10 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
         );
         require(!execution.sold, "ExecuteSell: Execution already sold");
         // invalidating immediately (extra measure to prevent reentrancy)
-        executions[executionId].sold = true;
+        execution.sold = true;
+        // storing the price to be distributed among the owners
+        execution.sellPrice = price;
 
-        uint256 realContributionExecuted = 0;
         uint256 realContributionOnBoard = 0;
 
         // validate and process all the sell orders
@@ -317,35 +321,36 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
                 order.executionId == executionId,
                 "Order executionId mismatch"
             );
-            // transfering the WETH to the signer
             uint256 realContribution = realContributions[order.signer][
                 executionId
             ];
-            uint256 proceeds = (realContribution * price) / execution.buyPrice;
-            // dust remains for the msg.sender, that's ok
-            _safeTransferWETH(msg.sender, order.signer, proceeds);
-            // to prevent double claiming:
-            realContributions[order.signer][executionId] = 0;
-            // to make sure that in the end we transfer to everyone
-            realContributionExecuted += realContribution;
-            // counting the "votes" in favor of this price
-            realContributionOnBoard += order.canAcceptSellPrice(price)
-                ? realContribution
-                : 0;
-        } // ends the contributors for loop
+            // search if signer already voted
+            bool isVoter = false;
+            for (uint256 j = 0; j < i; j++) {
+                if (orders[j].signer == order.signer) {
+                    isVoter = true;
+                    break;
+                }
+            }
+            // Validating that the signer has not voted yet
+            require(!isVoter, "Signer already voted");
 
-        // validating that we transferred the correct amounts of WETH
-        require(
-            realContributionExecuted == execution.buyPrice,
-            "Proceeds not transferred correctly"
-        );
+            // Validating price acceptance
+            require(
+                order.canAcceptSellPrice(price),
+                "Order can't accept price"
+            );
+
+            // Counting the "votes" in favor of this price
+            realContributionOnBoard += realContribution;
+        } // ends the contributors for loop
 
         // validating price consensus
         if (price >= execution.buyPrice) {
             // we need at least N out of 10_000 consensus
             require(
                 realContributionOnBoard * 10_000 >=
-                    realContributionExecuted *
+                    execution.buyPrice *
                         minConsensusForSellingOverOrEqualBuyPrice,
                 "Selling over or equal buyPrice: consensus not reached"
             );
@@ -353,11 +358,13 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             // we need a different consensus ratio
             require(
                 realContributionOnBoard * 10_000 >=
-                    realContributionExecuted *
-                        minConsensusForSellingUnderBuyPrice,
+                    execution.buyPrice * minConsensusForSellingUnderBuyPrice,
                 "Selling under buyPrice: consensus not reached"
             );
         }
+
+        // transferring the WETH from the caller to Clowder
+        _safeTransferWETH(msg.sender, address(this), price);
 
         // transferring the NFT
         NftCollectionFunctions.transferNft(
@@ -375,15 +382,18 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             "ClaimNft: Execution doesn't exist"
         );
         require(!execution.sold, "ClaimNft: Execution already sold");
-        /* 
-        * Invalidating immediately (extra measure to prevent reentrancy)
-        * TODO: maybe we can zero the execution struct instead (?),
-        * that way we save gas and also allow re-using the executionId
-        */
-        executions[executionId].sold = true; 
+        /*
+         * Invalidating immediately (extra measure to prevent reentrancy)
+         * TODO: maybe we can zero the execution struct instead (?),
+         * that way we save gas and also allow re-using the executionId
+         */
+        executions[executionId].sold = true;
         // validating real contribution
         uint256 realContribution = realContributions[msg.sender][executionId];
-        require(execution.buyPrice == realContribution, "ClaimNft: wrong real contribution");
+        require(
+            execution.buyPrice == realContribution,
+            "ClaimNft: wrong real contribution"
+        );
         // just for claiming gas deductions
         realContributions[msg.sender][executionId] = 0;
         // transferring the NFT
@@ -393,6 +403,42 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             to,
             execution.tokenId
         );
+    }
+
+    function claimProceeds(uint256[] calldata executionIds, address to)
+        external
+    {
+        uint256 proceedsSum = 0;
+        // loop over the executions
+        for (uint256 i = 0; i < executionIds.length; i++) {
+            uint256 executionId = executionIds[i];
+            Execution storage execution = executions[executionId];
+
+            require(
+                execution.collection != address(0),
+                "ClaimProceeds: Execution doesn't exist"
+            );
+            // Validating that we already sold the NFT or we don't have the NFT anymore (marketplace bid taken)
+            bool clowderOwnsTheNft = IERC721(execution.collection).ownerOf(
+                execution.tokenId
+            ) == address(this);
+            require(
+                execution.sold || !clowderOwnsTheNft,
+                "ClaimProceeds: NFT has not been sold or ask has been taken"
+            );
+
+            // transferring the WETH to the signer
+            uint256 realContribution = realContributions[msg.sender][
+                executionId
+            ];
+            uint256 price = execution.sellPrice;
+            // dust remains for the smart contract, that's ok
+            uint256 proceeds = (realContribution * price) / execution.buyPrice;
+            // to prevent double claiming:
+            realContributions[msg.sender][executionId] = 0;
+            proceedsSum += proceeds;
+        }
+        _safeTransferWETH(address(this), to, proceedsSum);
     }
 
     function _safeTransferWETH(
