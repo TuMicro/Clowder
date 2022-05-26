@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.8.4;
 
+// _________ .__                   .___            
+// \_   ___ \|  |   ______  _  ____| _/___________ 
+// /    \  \/|  |  /  _ \ \/ \/ / __ |/ __ \_  __ \
+// \     \___|  |_(  <_> )     / /_/ \  ___/|  | \/
+//  \______  /____/\____/ \/\_/\____ |\___  >__|   
+//         \/                       \/    \/       
+
+
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -421,11 +429,19 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             // Validating that we already sold the NFT or we don't have the NFT anymore (marketplace bid taken)
             bool clowderOwnsTheNft = IERC721(execution.collection).ownerOf(
                 execution.tokenId
-            ) == address(this);
+            ) == address(this); // but what about people who hasn't claimed their proceeds from an old execution of the same NFT?
+            // They wouldn't be allowed to claim proceeds until the current execution NFT is sold.
+            // We need to incentivize arbitragers to mark the execution as sold as soon as the NFT is gone (sold)?
+            // I think there are no incentives to deny proceeds claiming to anyone right?
+            // Another option is create a new contract per execution, so this new contract holds the NFT, 
+            // would that be a bit more gas-expensive?
             require(
                 execution.sold || !clowderOwnsTheNft,
                 "ClaimProceeds: NFT has not been sold or ask has been taken"
             );
+            // Mark as sold, so making sure that if in a future execution the same
+            // NFT returns to Clowder: the old execution beneficiaries can still claim proceeds.
+            execution.sold = true;
 
             // transferring the WETH to the signer
             uint256 realContribution = realContributions[msg.sender][
