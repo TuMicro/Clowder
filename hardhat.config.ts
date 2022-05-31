@@ -39,6 +39,7 @@ export function getChainRpcUrl(chain: keyof typeof chainIds): string {
   return jsonRpcUrl;
 }
 
+const chainSlug : keyof typeof chainIds = 'rinkeby';
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -57,8 +58,9 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       forking: {
-        url: getChainRpcUrl("mainnet"),
+        url: getChainRpcUrl(chainSlug),
       },
+      chainId: chainIds[chainSlug],
     },
   },
 };

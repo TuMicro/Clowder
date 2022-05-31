@@ -42,7 +42,7 @@ struct BuyOrderV1 {
 library BuyOrderV1Functions {
     bytes32 internal constant PASSIVE_BUY_ORDER_HASH = 0x72e794cb40f2ebfd460c7e8f21afeacac61a902963a831638aeff99e28bc690f;
 
-    function hash(BuyOrderV1 memory passiveOrder) public pure returns (bytes32) {
+    function hash(BuyOrderV1 memory passiveOrder) internal pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
@@ -61,11 +61,11 @@ library BuyOrderV1Functions {
             );
     }
 
-    function canAcceptBuyPrice(BuyOrderV1 memory passiveOrder, uint256 price) public pure returns (bool) {
+    function canAcceptBuyPrice(BuyOrderV1 memory passiveOrder, uint256 price) internal pure returns (bool) {
         return passiveOrder.buyPrice >= price;
     }
     
-    function canAcceptSellPrice(BuyOrderV1 memory passiveOrder, uint256 price) public pure returns (bool) {
+    function canAcceptSellPrice(BuyOrderV1 memory passiveOrder, uint256 price) internal pure returns (bool) {
         return passiveOrder.sellPrice <= price;
     }
 

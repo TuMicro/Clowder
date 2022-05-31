@@ -1,10 +1,8 @@
 import { TypedDataDomain, TypedDataField } from "@ethersproject/abstract-signer";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { keccak256, splitSignature, toUtf8Bytes } from "ethers/lib/utils";
+import { splitSignature } from "ethers/lib/utils";
 import { SignatureUtils } from "../signature";
 import { BuyOrderV1, BuyOrderV1Basic } from "./model";
-
-const DOMAIN_TYPEHASH = "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)";
 
 export class ClowderSignature {
   static getDomain(chainId: number, verifyingContract: string): TypedDataDomain {
@@ -24,6 +22,7 @@ export class ClowderSignature {
         { name: "collection", type: "address" },
         { name: "executionId", type: "uint256" },
         { name: "contribution", type: "uint256" },
+
         { name: "buyPrice", type: "uint256" },
         { name: "buyPriceEndTime", type: "uint256" },
         { name: "buyNonce", type: "uint256" },

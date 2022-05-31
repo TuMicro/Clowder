@@ -21,7 +21,7 @@ import {BuyOrderV1, BuyOrderV1Functions} from "./libraries/passiveorders/BuyOrde
 import {Execution} from "./libraries/execution/Execution.sol";
 import {SafeERC20Transfer} from "./libraries/assettransfer/SafeERC20Transfer.sol";
 import {SignatureUtil} from "./libraries/SignatureUtil.sol";
-// import {MarketplaceSignatureUtil, OpenSeaOwnableDelegateProxy} from "./libraries/MarketplaceSignatureUtil.sol";
+import {MarketplaceSignatureUtil, OpenSeaOwnableDelegateProxy} from "./libraries/MarketplaceSignatureUtil.sol";
 import {NftCollectionFunctions} from "./libraries/NftCollection.sol";
 
 contract ClowderMainOwnable is Ownable {
@@ -343,6 +343,123 @@ contract ClowderMain is
         );
     }
 
+    function listOnOpenSea(
+        BuyOrderV1[] calldata orders,
+        uint256 executorPrice,
+        uint256 marketplaceFee // out of 10_000
+    ) external nonReentrant {
+        require(
+            orders.length > 0,
+            "ListOnMarketplace: Must have at least one order"
+        );
+
+        uint256 protocolFee = (protocolFeeFractionFromSelling * executorPrice) /
+            10_000;
+        uint256 price = executorPrice - protocolFee;
+        uint256 executionId = orders[0].executionId;
+
+        Execution storage execution = executions[executionId];
+
+        /* Validations */
+
+        require(execution.collection != address(0), "Execution doesn't exist");
+
+        require(!execution.sold, "Execution already sold");
+
+        uint256 minExpirationTime = BuyOrderV1Functions
+            .validateSellOrdersParameters(
+                isUsedSellNonce,
+                realContributions,
+                orders,
+                executionId,
+                execution,
+                price,
+                minConsensusForSellingOverOrEqualBuyPrice,
+                minConsensusForSellingUnderBuyPrice
+            );
+
+        // Validate signatures (includes interaction with
+        // other contracts)
+        BuyOrderV1Functions.validateSignatures(orders, EIP712_DOMAIN_SEPARATOR);
+
+        {
+            // OpenSea stuff
+
+            // Approving OpenSea to move the item (if not approved already) and WETH (yes, OpenSea requires this for the way it works)
+            // initialize opensea proxy (check opensea-js)
+            OpenSeaOwnableDelegateProxy myProxy = MarketplaceSignatureUtil
+                .wyvernProxyRegistry
+                .proxies(address(this));
+                
+            if (address(myProxy) == address(0)) {
+                myProxy = MarketplaceSignatureUtil
+                    .wyvernProxyRegistry
+                    .registerProxy();
+            }
+
+            IERC721 erc721 = IERC721(execution.collection);
+            if (!erc721.isApprovedForAll(address(this), address(myProxy))) {
+                erc721.setApprovalForAll(address(myProxy), true);
+            }
+
+            IERC20 erc20 = IERC20(WETH);
+            if (
+                erc20.allowance(
+                    address(this),
+                    MarketplaceSignatureUtil.WyvernTokenTransferProxy
+                ) < type(uint256).max
+            ) {
+                erc20.approve(
+                    MarketplaceSignatureUtil.WyvernTokenTransferProxy,
+                    type(uint256).max
+                );
+            }
+        }
+
+        // calculating list price
+        uint256 listPrice = (10_000 * executorPrice) /
+            (10_000 - marketplaceFee) +
+            1;
+
+        // creating the OpenSea sell order
+        bytes32 _hash = MarketplaceSignatureUtil.buildAndGetOpenSeaOrderHash(
+            address(this),
+            execution.collection,
+            execution.tokenId,
+            listPrice,
+            minExpirationTime,
+            marketplaceFee,
+            WETH
+        );
+        require(_hash != 0, "Hash must not be 0");
+
+        // storing the hash by executionId (replacing the old one, so invalidating it)
+        execution.openSeaOrderHash = _hash;
+        // storing the last list price so we know how much to
+        // to be awarded to each owner
+        execution.sellPrice = price;
+        // storing the protocol fee
+        execution.sellProtocolFee = protocolFee;
+        // storing the listing end time
+        execution.listingEndTime = minExpirationTime;
+    }
+
+    function isValidSignature(bytes32 _hash, bytes calldata _signature)
+        external
+        view
+        override
+        returns (bytes4)
+    {
+        require(_hash != 0, "Hash must not be 0");
+        uint256 executionId = uint256(bytes32(_signature[:32]));
+        // Validate signatures
+        if (executions[executionId].openSeaOrderHash == _hash) {
+            return 0x1626ba7e;
+        } else {
+            return 0xffffffff;
+        }
+    }
+
     function claimNft(uint256 executionId, address to) external nonReentrant {
         Execution storage execution = executions[executionId];
         require(
@@ -373,18 +490,15 @@ contract ClowderMain is
         );
     }
 
-    function claimProceeds(uint256[] calldata executionIds, address to)
-        external
-    {
-        uint256 proceedsSum = 0;
-        // loop over the executions
+    function preClaim(uint256[] calldata executionIds) internal {
+         // loop over the executions
         for (uint256 i = 0; i < executionIds.length; i++) {
             uint256 executionId = executionIds[i];
             Execution storage execution = executions[executionId];
 
             require(
                 execution.collection != address(0),
-                "ClaimProceeds: Execution doesn't exist"
+                "PreClaim: Execution doesn't exist"
             );
             // Validating that we already sold the NFT
             // or that we don't have it anymore (if NFT was sold through a marketplace).
@@ -402,13 +516,26 @@ contract ClowderMain is
             ) == address(this);
             require(
                 execution.sold || !clowderOwnsTheNft,
-                "ClaimProceeds: NFT has not been sold nor ask has been taken"
+                "PreClaim: NFT has not been sold nor ask has been taken"
             );
             // Marking the execution as sold so future claimers don't need to
             // rely on checking whether Clowder owns the NFT or not
             if (!execution.sold) {
                 execution.sold = true;
             }
+        }
+    }
+
+    function claimProceeds(uint256[] calldata executionIds, address to)
+        external
+    {
+        preClaim(executionIds);
+
+        uint256 proceedsSum = 0;
+        // loop over the executions
+        for (uint256 i = 0; i < executionIds.length; i++) {
+            uint256 executionId = executionIds[i];
+            Execution storage execution = executions[executionId];
 
             // transferring the WETH to the signer
             uint256 realContribution = realContributions[msg.sender][
@@ -422,6 +549,22 @@ contract ClowderMain is
             proceedsSum += proceeds;
         }
         _safeTransferWETH(address(this), to, proceedsSum);
+    }
+
+    function claimProtocolFees(uint256[] calldata executionIds) external {
+        preClaim(executionIds);
+
+        uint256 feesSum = 0;
+        // loop over the executions
+        for (uint256 i = 0; i < executionIds.length; i++) {
+            uint256 executionId = executionIds[i];
+            Execution storage execution = executions[executionId];
+
+            feesSum += execution.sellProtocolFee;
+            // marking it zero so the protocol fee receiever can't receive it again
+            execution.sellProtocolFee = 0;
+        }
+        _safeTransferWETH(address(this), protocolFeeReceiver, feesSum);
     }
 
     function _safeTransferWETH(

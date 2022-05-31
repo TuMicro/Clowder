@@ -131,16 +131,15 @@ describe("Listing on OpenSea", () => {
       console.log(JSON.stringify(sellOrder));
     });
   }
-  it("Should be able to list", async () => {
-    // const { clowderMain, thirdParty, eip712Domain, feeFraction,
-    //   testERC721, testERC721Holder, wethTokenContract, wethHolder,
-    //   owner, testERC721TokenId } = deployOutputs;
+  it("Should be able to list through the contract", async () => {
+    const { clowderMain, thirdParty, eip712Domain, feeFraction,
+      testERC721, testERC721Holder, wethTokenContract, wethHolder,
+      owner, testERC721TokenId } = deployOutputs;
 
-    // const protocolSellingFeeFraction = BigNumber.from(10); // out of 10_000
-    // await clowderMain.connect(owner).changeProtocolFeeFractionFromSelling(protocolSellingFeeFraction);
-    // const executionPrice = getSellExecutionPriceFromPrice(buyOrderSigned.sellPrice, protocolSellingFeeFraction);
-    // const marketplaceFees = BigNumber.from(250);
-    // await clowderMain.listOnOpenSea([buyOrderSigned], executionPrice, marketplaceFees);
-
+    const protocolSellingFeeFraction = BigNumber.from(10); // out of 10_000
+    await clowderMain.connect(owner).changeProtocolFeeFractionFromSelling(protocolSellingFeeFraction);
+    const executionPrice = getSellExecutionPriceFromPrice(buyOrderSigned.sellPrice, protocolSellingFeeFraction);
+    const marketplaceFees = BigNumber.from(250);
+    await clowderMain.listOnOpenSea([buyOrderSigned], executionPrice, marketplaceFees);
   });
 });
