@@ -37,13 +37,30 @@ export interface DeployOutputs {
 export async function deployForTests(): Promise<DeployOutputs> {
   const [owner, nonOwner, thirdParty, feeReceiver, testERC721Owner,
     testERC721Holder, wethHolder] = await ethers.getSigners();
-  const clowderMainArtifact: Artifact = await artifacts.readArtifact("ClowderMain");
-  const clowderMain = <ClowderMain>await waffle.deployContract(owner,
-    clowderMainArtifact, [
+
+  const buyOrderV1FunctionsFactory = await ethers.getContractFactory('BuyOrderV1Functions');
+  const buyOrderV1FunctionsLibrary = await buyOrderV1FunctionsFactory.deploy()
+  await buyOrderV1FunctionsLibrary.deployed();
+  
+  const clowderMainFactory = await ethers.getContractFactory('ClowderMain', {
+    libraries: {
+      'BuyOrderV1Functions': buyOrderV1FunctionsLibrary.address,
+    }
+  });
+  const clowderConstructorParams = [
     WETH_ADDRESS_MAINNET,
     feeReceiver.address,
     DEFAULT_FEE_FRACTION,
-  ]);
+  ];
+  const clowderMain = await clowderMainFactory.connect(owner).deploy(
+    clowderConstructorParams[0].toString(),
+    clowderConstructorParams[1].toString(),
+    clowderConstructorParams[2],
+  );
+  // Couldn't find a way to link libraries this way:
+  // const clowderMainArtifact: Artifact = await artifacts.readArtifact("ClowderMain");
+  // const clowderMain = <ClowderMain>await waffle.deployContract(owner,
+  //   clowderMainArtifact, clowderConstructorParams);
 
   const network = await ethers.provider.getNetwork();
 
