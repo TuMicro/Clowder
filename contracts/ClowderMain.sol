@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.8.4;
 
-// _________ .__                   .___            
-// \_   ___ \|  |   ______  _  ____| _/___________ 
+// _________ .__                   .___
+// \_   ___ \|  |   ______  _  ____| _/___________
 // /    \  \/|  |  /  _ \ \/ \/ / __ |/ __ \_  __ \
 // \     \___|  |_(  <_> )     / /_/ \  ___/|  | \/
-//  \______  /____/\____/ \/\_/\____ |\___  >__|   
-//         \/                       \/    \/       
-
+//  \______  /____/\____/ \/\_/\____ |\___  >__|
+//         \/                       \/    \/
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -15,84 +14,22 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import {BuyOrderV1} from "./libraries/passiveorders/BuyOrderV1.sol";
+import {BuyOrderV1, BuyOrderV1Functions} from "./libraries/passiveorders/BuyOrderV1.sol";
+import {Execution} from "./libraries/execution/Execution.sol";
+import {SafeERC20Transfer} from "./libraries/assettransfer/SafeERC20Transfer.sol";
 import {SignatureUtil} from "./libraries/SignatureUtil.sol";
+// import {MarketplaceSignatureUtil, OpenSeaOwnableDelegateProxy} from "./libraries/MarketplaceSignatureUtil.sol";
 import {NftCollectionFunctions} from "./libraries/NftCollection.sol";
 
-contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
-    using SafeERC20 for IERC20;
-
-    address public immutable WETH;
-    bytes32 public immutable EIP712_DOMAIN_SEPARATOR;
-
+contract ClowderMainOwnable is Ownable {
     address public protocolFeeReceiver;
     uint256 public protocolFeeFraction; // out of 10_000
     uint256 public protocolFeeFractionFromSelling; // out of 10_000
     uint256 public minConsensusForSellingOverOrEqualBuyPrice = 5_000; // out of 10_000
     uint256 public minConsensusForSellingUnderBuyPrice = 10_000; // out of 10_000
-
-    // user => nonce => isUsedBuyNonce
-    mapping(address => mapping(uint256 => bool)) public isUsedBuyNonce;
-    // user => nonce => isUsedSellNonce
-    mapping(address => mapping(uint256 => bool)) public isUsedSellNonce;
-    // buyer => executionId => real contribution
-    mapping(address => mapping(uint256 => uint256)) public realContributions;
-    // executionId => Execution
-    mapping(uint256 => Execution) executions;
-
-    struct Execution {
-        address collection; // zero to evaluate as non-existant
-        uint256 buyPrice;
-        uint256 tokenId;
-        bool sold;
-        uint256 sellPrice;
-    }
-
-    constructor(
-        address _WETH,
-        address _protocolFeeReceiver,
-        uint256 _protocolFeeFraction
-    ) {
-        WETH = _WETH;
-        protocolFeeReceiver = _protocolFeeReceiver;
-        protocolFeeFraction = _protocolFeeFraction;
-
-        EIP712_DOMAIN_SEPARATOR = keccak256(
-            abi.encode(
-                keccak256(
-                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                ), // EIP712 domain typehash
-                keccak256("Clowder"), // name
-                keccak256(bytes("0.1")), // version
-                block.chainid,
-                address(this)
-            )
-        );
-    }
-
-    function cancelBuyOrders(uint256[] calldata buyOrderNonces) external {
-        require(
-            buyOrderNonces.length > 0,
-            "Cancel: Must provide at least one nonce"
-        );
-
-        for (uint256 i = 0; i < buyOrderNonces.length; i++) {
-            isUsedBuyNonce[msg.sender][buyOrderNonces[i]] = true; // used
-        }
-    }
-
-    function cancelSellOrders(uint256[] calldata sellOrderNonces) external {
-        require(
-            sellOrderNonces.length > 0,
-            "Cancel: Must provide at least one nonce"
-        );
-
-        for (uint256 i = 0; i < sellOrderNonces.length; i++) {
-            isUsedSellNonce[msg.sender][sellOrderNonces[i]] = true; // cancelled
-        }
-    }
 
     /**
      * @notice [onlyOwner] Change the protocol fee receiver
@@ -145,6 +82,72 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
     ) external onlyOwner {
         minConsensusForSellingUnderBuyPrice = _minConsensusForSellingUnderBuyPrice;
     }
+}
+
+contract ClowderMain is
+    ClowderMainOwnable,
+    ReentrancyGuard,
+    ERC721Holder,
+    ERC1155Holder,
+    IERC1271
+{
+    address public immutable WETH;
+    bytes32 public immutable EIP712_DOMAIN_SEPARATOR;
+
+    // user => nonce => isUsedBuyNonce
+    mapping(address => mapping(uint256 => bool)) public isUsedBuyNonce;
+    // user => nonce => isUsedSellNonce
+    mapping(address => mapping(uint256 => bool)) public isUsedSellNonce;
+    // buyer => executionId => real contribution
+    // Returns to zero when the owner is given their part of the
+    // sale proceeds (claimProceeds).
+    mapping(address => mapping(uint256 => uint256)) public realContributions;
+    // executionId => Execution
+    mapping(uint256 => Execution) executions;
+
+    constructor(
+        address _WETH,
+        address _protocolFeeReceiver,
+        uint256 _protocolFeeFraction
+    ) {
+        WETH = _WETH;
+        protocolFeeReceiver = _protocolFeeReceiver;
+        protocolFeeFraction = _protocolFeeFraction;
+
+        EIP712_DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                keccak256(
+                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                ), // EIP712 domain typehash
+                keccak256("Clowder"), // name
+                keccak256(bytes("0.1")), // version
+                block.chainid,
+                address(this)
+            )
+        );
+    }
+
+    function cancelBuyOrders(uint256[] calldata buyOrderNonces) external {
+        require(
+            buyOrderNonces.length > 0,
+            "Cancel: Must provide at least one nonce"
+        );
+
+        for (uint256 i = 0; i < buyOrderNonces.length; i++) {
+            isUsedBuyNonce[msg.sender][buyOrderNonces[i]] = true; // used
+        }
+    }
+
+    function cancelSellOrders(uint256[] calldata sellOrderNonces) external {
+        require(
+            sellOrderNonces.length > 0,
+            "Cancel: Must provide at least one nonce"
+        );
+
+        for (uint256 i = 0; i < sellOrderNonces.length; i++) {
+            isUsedSellNonce[msg.sender][sellOrderNonces[i]] = true; // cancelled
+        }
+    }
 
     /**
      * @notice Executes on an array of passive buy orders
@@ -171,7 +174,10 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
             buyPrice: price,
             tokenId: tokenId,
             sold: false,
-            sellPrice: 0
+            sellPrice: 0,
+            listingEndTime: 0,
+            openSeaOrderHash: bytes32(0),
+            sellProtocolFee: 0
         });
 
         uint256 protocolFeeTransferred = 0;
@@ -185,7 +191,12 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
                 !isUsedBuyNonce[order.signer][order.buyNonce],
                 "Order nonce is unusable"
             );
-            // Invalidating order nonce immediately (to avoid re-use/reentrancy)
+            // Invalidating order nonce immediately (to avoid reentrancy
+            // or even reusing the signature in this loop)
+            // DO NOT separate from the above check, otherwise the order
+            // nonce could be reused (you can check the
+            // executeOnPassiveSellOrders for guidance). If you need separation
+            // probably you can check the signer/nonces before "i".
             isUsedBuyNonce[order.signer][order.buyNonce] = true;
             // Validate order signature
             bytes32 orderHash = order.hash();
@@ -262,6 +273,15 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
         );
     }
 
+    function _invalidateNonces(BuyOrderV1[] calldata orders) internal {
+        // Invalidating nonces
+        for (uint256 i = 0; i < orders.length; i++) {
+            BuyOrderV1 calldata order = orders[i];
+            // Invalidating order nonce (to avoid reentrancy)
+            isUsedSellNonce[order.signer][order.sellNonce] = true;
+        }
+    }
+
     function executeOnPassiveSellOrders(
         BuyOrderV1[] calldata orders,
         uint256 executorPrice
@@ -271,112 +291,52 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
         uint256 protocolFee = (protocolFeeFractionFromSelling * executorPrice) /
             10_000;
         uint256 price = executorPrice - protocolFee;
-        address collection = orders[0].collection;
         uint256 executionId = orders[0].executionId;
 
         Execution storage execution = executions[executionId];
-        require(
-            execution.collection != address(0),
-            "ExecuteSell: Execution doesn't exist"
+
+        /* Validations */
+
+        require(execution.collection != address(0), "Execution doesn't exist");
+
+        require(!execution.sold, "Execution already sold");
+
+        validateSellOrdersParameters(
+            // isUsedSellNonce,
+            // realContributions,
+            orders,
+            executionId,
+            // execution,
+            price,
+            minConsensusForSellingOverOrEqualBuyPrice,
+            minConsensusForSellingUnderBuyPrice
         );
-        require(
-            execution.collection == collection,
-            "ExecuteSell: Execution collection must match order's"
-        );
-        require(!execution.sold, "ExecuteSell: Execution already sold");
-        // invalidating immediately (extra measure to prevent reentrancy)
+
+        /* Invalidations */
+
+        _invalidateNonces(orders);
+
+        // marking as sold (to prevent reentrancy)
         execution.sold = true;
+
         // storing the price to be distributed among the owners
         execution.sellPrice = price;
 
-        uint256 realContributionOnBoard = 0;
+        /* Giving away execution flow */
 
-        // validate and process all the sell orders
-        for (uint256 i = 0; i < orders.length; i++) {
-            BuyOrderV1 calldata order = orders[i];
-            // Validate order nonce usability
-            require(
-                !isUsedSellNonce[order.signer][order.sellNonce],
-                "Order nonce is unusable"
-            );
-            // Invalidating order nonce immediately (to avoid re-use/reentrancy)
-            isUsedSellNonce[order.signer][order.sellNonce] = true;
-            // Validate order signature
-            bytes32 orderHash = order.hash();
-            require(
-                SignatureUtil.verify(
-                    orderHash,
-                    order.signer,
-                    order.v,
-                    order.r,
-                    order.s,
-                    EIP712_DOMAIN_SEPARATOR
-                ),
-                "Signature: Invalid"
-            );
-            // Validate the order is not expired
-            require(order.sellPriceEndTime >= block.timestamp, "Order expired");
-            // Validate collection
-            require(
-                order.collection == collection,
-                "Order collection mismatch"
-            );
-            // Validate executionId
-            require(
-                order.executionId == executionId,
-                "Order executionId mismatch"
-            );
-            uint256 realContribution = realContributions[order.signer][
-                executionId
-            ];
-            // search if signer already voted
-            bool isVoter = false;
-            for (uint256 j = 0; j < i; j++) {
-                if (orders[j].signer == order.signer) {
-                    isVoter = true;
-                    break;
-                }
-            }
-            // Validating that the signer has not voted yet
-            require(!isVoter, "Signer already voted");
-
-            // Validating price acceptance
-            require(
-                order.canAcceptSellPrice(price),
-                "Order can't accept price"
-            );
-
-            // Counting the "votes" in favor of this price
-            realContributionOnBoard += realContribution;
-        } // ends the contributors for loop
-
-        // validating price consensus
-        if (price >= execution.buyPrice) {
-            // we need at least N out of 10_000 consensus
-            require(
-                realContributionOnBoard * 10_000 >=
-                    execution.buyPrice *
-                        minConsensusForSellingOverOrEqualBuyPrice,
-                "Selling over or equal buyPrice: consensus not reached"
-            );
-        } else {
-            // we need a different consensus ratio
-            require(
-                realContributionOnBoard * 10_000 >=
-                    execution.buyPrice * minConsensusForSellingUnderBuyPrice,
-                "Selling under buyPrice: consensus not reached"
-            );
-        }
+        // Validate signatures (includes interaction with
+        // other contracts)
+        validateSignatures(orders, EIP712_DOMAIN_SEPARATOR);
 
         // transferring the WETH from the caller to Clowder
         _safeTransferWETH(msg.sender, address(this), price);
-        
+
         // transferring the protocol fee
         _safeTransferWETH(msg.sender, protocolFeeReceiver, protocolFee);
 
         // transferring the NFT
         NftCollectionFunctions.transferNft(
-            collection,
+            execution.collection,
             address(this),
             msg.sender,
             execution.tokenId
@@ -384,7 +344,7 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
     }
 
     function claimNft(uint256 executionId, address to) external nonReentrant {
-        Execution memory execution = executions[executionId];
+        Execution storage execution = executions[executionId];
         require(
             execution.collection != address(0),
             "ClaimNft: Execution doesn't exist"
@@ -426,22 +386,29 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
                 execution.collection != address(0),
                 "ClaimProceeds: Execution doesn't exist"
             );
-            // Validating that we already sold the NFT or we don't have the NFT anymore (marketplace bid taken)
+            // Validating that we already sold the NFT
+            // or that we don't have it anymore (if NFT was sold through a marketplace).
+            // What about if nobody has claimed their proceeds from an old execution of the same NFT?
+            // They wouldn't be allowed to claim proceeds until the current execution NFT is sold.
+            // That's why the fee receiver should mark the execution as sold
+            // as soon as the NFT is gone (sold), for now only
+            // the fee receiver can receive the protocol sell fee. Do we need
+            // to allow external arbitragers?
+            // Another option is create a new contract per execution,
+            // so this new contract holds the NFT, WETH and the execution struct,
+            // would that be a bit more gas-expensive?
             bool clowderOwnsTheNft = IERC721(execution.collection).ownerOf(
                 execution.tokenId
-            ) == address(this); // but what about people who hasn't claimed their proceeds from an old execution of the same NFT?
-            // They wouldn't be allowed to claim proceeds until the current execution NFT is sold.
-            // We need to incentivize arbitragers to mark the execution as sold as soon as the NFT is gone (sold)?
-            // I think there are no incentives to deny proceeds claiming to anyone right?
-            // Another option is create a new contract per execution, so this new contract holds the NFT, 
-            // would that be a bit more gas-expensive?
+            ) == address(this);
             require(
                 execution.sold || !clowderOwnsTheNft,
-                "ClaimProceeds: NFT has not been sold or ask has been taken"
+                "ClaimProceeds: NFT has not been sold nor ask has been taken"
             );
-            // Mark as sold, so making sure that if in a future execution the same
-            // NFT returns to Clowder: the old execution beneficiaries can still claim proceeds.
-            execution.sold = true;
+            // Marking the execution as sold so future claimers don't need to
+            // rely on checking whether Clowder owns the NFT or not
+            if (!execution.sold) {
+                execution.sold = true;
+            }
 
             // transferring the WETH to the signer
             uint256 realContribution = realContributions[msg.sender][
@@ -462,8 +429,117 @@ contract ClowderMain is ReentrancyGuard, Ownable, ERC721Holder, ERC1155Holder {
         address to,
         uint256 amount
     ) internal {
-        if (amount != 0) {
-            IERC20(WETH).safeTransferFrom(from, to, amount);
+        SafeERC20Transfer.safeERC20Transfer(WETH, from, to, amount);
+    }
+
+    // Validate signatures (includes interaction with
+    // other contracts)
+    // Remember that we give away execution flow
+    // in case the signer is a contract (isValidSignature)
+    function validateSignatures(
+        BuyOrderV1[] calldata orders,
+        bytes32 domainSeparator
+    ) public view {
+        for (uint256 i = 0; i < orders.length; i++) {
+            BuyOrderV1 calldata order = orders[i];
+            // Validate order signature
+            bytes32 orderHash = order.hash();
+            require(
+                SignatureUtil.verify(
+                    orderHash,
+                    order.signer,
+                    order.v,
+                    order.r,
+                    order.s,
+                    domainSeparator
+                ),
+                "Signature: Invalid"
+            );
         }
+    }
+
+    function validateSellOrdersParameters(
+        // mapping(address => mapping(uint256 => bool)) storage _isUsedSellNonce,
+        // mapping(address => mapping(uint256 => uint256)) storage _realContributions,
+        BuyOrderV1[] calldata orders,
+        uint256 executionId,
+        // Execution storage execution,
+        uint256 price,
+        uint256 minConsensusForSellingOverOrEqualBuyPrice,
+        uint256 minConsensusForSellingUnderBuyPrice
+    ) public view returns (uint256) {
+        mapping(address => mapping(uint256 => bool))
+            storage _isUsedSellNonce = isUsedSellNonce;
+        mapping(address => mapping(uint256 => uint256))
+            storage _realContributions = realContributions;
+        Execution storage execution = executions[executionId];
+
+        uint256 minExpirationTime = type(uint256).max;
+        uint256 realContributionOnBoard = 0;
+        // Validate orders parameters, no need to access state
+        for (uint256 i = 0; i < orders.length; i++) {
+            BuyOrderV1 calldata order = orders[i];
+
+            // Validate the order is not expired
+            require(order.sellPriceEndTime >= block.timestamp, "Order expired");
+            // Validate collection
+            require(
+                order.collection == execution.collection,
+                "Order collection mismatch"
+            );
+            // Validate executionId
+            require(
+                order.executionId == executionId,
+                "Order executionId mismatch"
+            );
+            // Validating that the signer has not voted yet
+            for (uint256 j = 0; j < i; j++) {
+                if (orders[j].signer == order.signer) {
+                    require(false, "Signer already voted");
+                }
+            }
+            // Validating price acceptance
+            require(
+                order.canAcceptSellPrice(price),
+                "Order can't accept price"
+            );
+            // updating the min expiration time
+            minExpirationTime = Math.min(
+                minExpirationTime,
+                order.sellPriceEndTime
+            );
+
+            /* State required for tne following lines */
+
+            // Validate order nonce usability
+            require(
+                !_isUsedSellNonce[order.signer][order.sellNonce],
+                "Order nonce is unusable"
+            );
+            // counting the "votes" in favor of this price
+            realContributionOnBoard += _realContributions[order.signer][
+                executionId
+            ];
+        } // ends the voters for loop
+
+        // Validating price consensus
+        if (price >= execution.buyPrice) {
+            // we need at least N out of 10_000 consensus
+            require(
+                realContributionOnBoard * 10_000 >=
+                    execution.buyPrice *
+                        minConsensusForSellingOverOrEqualBuyPrice,
+                "Selling over or equal buyPrice: consensus not reached"
+            );
+        } else {
+            // we need a different consensus ratio
+            require(
+                realContributionOnBoard * 10_000 >=
+                    execution.buyPrice * minConsensusForSellingUnderBuyPrice,
+                "Selling under buyPrice: consensus not reached"
+            );
+        }
+
+        return minExpirationTime;
     }
 }

@@ -12,7 +12,7 @@ if (!infuraApiKey) {
   throw new Error("Please set your INFURA_API_KEY in a .env file");
 }
 
-const chainIds = {
+export const chainIds = {
   "arbitrum-mainnet": 42161,
   avalanche: 43114,
   bsc: 56,
@@ -24,7 +24,7 @@ const chainIds = {
   rinkeby: 4,
 };
 
-function getChainRpcUrl(chain: keyof typeof chainIds): string {
+export function getChainRpcUrl(chain: keyof typeof chainIds): string {
   let jsonRpcUrl: string;
   switch (chain) {
     case "avalanche":

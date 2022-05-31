@@ -7,7 +7,7 @@
   },
   "author": "",
   "scripts": {
-    "genOrderHashes": "npx ts-node --files --project tsconfig.json test/ClowderMain/signature.script.ts"
+    "genOrderHashes": "npx ts-node --files --project tsconfig.json test/ClowderMain/clowdersignature.script.ts"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.5",
@@ -39,6 +39,10 @@
     "typescript": "^4.1.2"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.6.0"
+    "@openzeppelin/contracts": "^4.6.0",
+    "opensea-js": "^3.0.4",
+    "web3": "^1.7.3",
+    "wyvern-js": "git+https://github.com/ProjectOpenSea/wyvern-js.git#7823dfdf5a272ebbc6a46e66d23563a9d6cc1be2",
+    "wyvern-schemas": "git+https://github.com/ProjectOpenSea/wyvern-schemas.git#0a8d569931ddb6faa6e96f5a60fa2f83f0a8750e"
   }
 }

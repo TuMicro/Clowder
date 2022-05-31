@@ -7,7 +7,7 @@ import type { Artifact } from "hardhat/types";
 import { ClowderMain, TestERC721 } from "../../typechain-types";
 import { WETH9_ABI } from "../constants/erc20abi";
 import { ETHER } from "../constants/ether";
-import { WETH_ADDRESS_FOR_TESTING } from "./addresses";
+import { WETH_ADDRESS_MAINNET } from "./addresses";
 import { ClowderSignature } from "./clowdersignature";
 
 export const DEFAULT_FEE_FRACTION = BigNumber.from(1); // out of 10k
@@ -40,7 +40,7 @@ export async function deployForTests(): Promise<DeployOutputs> {
   const clowderMainArtifact: Artifact = await artifacts.readArtifact("ClowderMain");
   const clowderMain = <ClowderMain>await waffle.deployContract(owner,
     clowderMainArtifact, [
-    WETH_ADDRESS_FOR_TESTING,
+    WETH_ADDRESS_MAINNET,
     feeReceiver.address,
     DEFAULT_FEE_FRACTION,
   ]);
@@ -58,7 +58,7 @@ export async function deployForTests(): Promise<DeployOutputs> {
   await testERC721.connect(testERC721Owner).mint(testERC721Holder.address);
 
   // setting up the WETH contract and WETH holder
-  const wethTokenContract = new Contract(WETH_ADDRESS_FOR_TESTING, WETH9_ABI, ethers.provider);
+  const wethTokenContract = new Contract(WETH_ADDRESS_MAINNET, WETH9_ABI, ethers.provider);
   await ethers.provider.send("hardhat_setBalance", [ // because eth balance is spent on tests
     wethHolder.address,
     hexStripZeros(ETHER.mul(10_000).toHexString()),

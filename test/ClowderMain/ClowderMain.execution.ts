@@ -178,11 +178,12 @@ describe("Execution functions", () => {
       buyOrder.sellPrice.mul(2),
     )).to.be.revertedWith('Order expired');
 
-    // testing sell order nonce used rejection
+    // testing sell order multiple votes from 
+    // same owner rejection
     await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
       [buyOrderSigned, buyOrderSigned],
       buyOrder.sellPrice.mul(2),
-    )).to.be.revertedWith("Order nonce is unusable");
+    )).to.be.revertedWith("Signer already voted");
 
     // testing sell order price rejection
     await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
@@ -203,7 +204,7 @@ describe("Execution functions", () => {
     await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
       [buyOrderOtherCollectionSigned],
       buyOrder.sellPrice.mul(2),
-    )).to.be.revertedWith("ExecuteSell: Execution collection must match order's");
+    )).to.be.revertedWith("Order collection mismatch");
 
     // Must be able to sell
     const protocolSellingFeeFraction = BigNumber.from(10); // out of 10_000
@@ -236,7 +237,7 @@ describe("Execution functions", () => {
     // testing rejection when reusing the executionId
     await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
       [buyOrderSigned], sellExecutionPrice
-    )).to.be.revertedWith("ExecuteSell: Execution already sold");
+    )).to.be.revertedWith("Execution already sold");
   });
 
   it("Must allow sole owner to claim the NFT", async () => {
