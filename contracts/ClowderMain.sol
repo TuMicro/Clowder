@@ -26,8 +26,8 @@ import {NftCollectionFunctions} from "./libraries/NftCollection.sol";
 
 contract ClowderMainOwnable is Ownable {
     address public protocolFeeReceiver;
-    uint256 public protocolFeeFraction; // out of 10_000
-    uint256 public protocolFeeFractionFromSelling; // out of 10_000
+    uint256 public protocolFeeFraction = 100; // out of 10_000
+    uint256 public protocolFeeFractionFromSelling = 100; // out of 10_000
     uint256 public minConsensusForSellingOverOrEqualBuyPrice = 5_000; // out of 10_000
     uint256 public minConsensusForSellingUnderBuyPrice = 10_000; // out of 10_000
 
@@ -107,12 +107,10 @@ contract ClowderMain is
 
     constructor(
         address _WETH,
-        address _protocolFeeReceiver,
-        uint256 _protocolFeeFraction
+        address _protocolFeeReceiver
     ) {
         WETH = _WETH;
         protocolFeeReceiver = _protocolFeeReceiver;
-        protocolFeeFraction = _protocolFeeFraction;
 
         EIP712_DOMAIN_SEPARATOR = keccak256(
             abi.encode(

@@ -58,18 +58,19 @@ export async function deployForTests(): Promise<DeployOutputs> {
   const clowderConstructorParams = [
     wethAddress,
     feeReceiver.address,
-    DEFAULT_FEE_FRACTION,
   ];
   const clowderMain = await clowderMainFactory.connect(owner).deploy(
     clowderConstructorParams[0].toString(),
     clowderConstructorParams[1].toString(),
-    clowderConstructorParams[2],
   );
   // Couldn't find a way to link libraries this way:
   // const clowderMainArtifact: Artifact = await artifacts.readArtifact("ClowderMain");
   // const clowderMain = <ClowderMain>await waffle.deployContract(owner,
   //   clowderMainArtifact, clowderConstructorParams);
 
+  
+  // setting the fee fraction
+  await clowderMain.connect(owner).changeProtocolFeeFraction(DEFAULT_FEE_FRACTION);
 
   // setting up the test NFT contract and NFT holder
   const testERC721Factory = await ethers.getContractFactory("TestERC721");

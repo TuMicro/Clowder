@@ -6,6 +6,7 @@ import "@nomiclabs/hardhat-waffle"; // required for tests to work using ethers
 import '@typechain/hardhat';
 import '@nomiclabs/hardhat-ethers';
 import "hardhat-gas-reporter";
+import "hardhat-deploy";
 
 const infuraApiKey: string | undefined = process.env.INFURA_API_KEY;
 if (!infuraApiKey) {
@@ -39,7 +40,7 @@ export function getChainRpcUrl(chain: keyof typeof chainIds): string {
   return jsonRpcUrl;
 }
 
-const chainSlug : keyof typeof chainIds = 'rinkeby';
+const forkForTesting: keyof typeof chainIds = 'rinkeby';
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -47,22 +48,36 @@ const config: HardhatUserConfig = {
   // Your type-safe config goes here
   solidity: {
     version: "0.8.13",
-    // settings: { // did work
-    //   optimizer: {
-    //     enabled: true,
-    //     runs: 4294967295,
-    //   }
-    // },
+    settings: { // did work
+      optimizer: {
+        enabled: true,
+        runs: 200,
+        // runs: 4294967295,
+      }
+    },
   },
   // defaultNetwork: "hardhat", // default is hardhat
   networks: {
     hardhat: {
       forking: {
-        url: getChainRpcUrl(chainSlug),
+        url: getChainRpcUrl(forkForTesting),
       },
-      chainId: chainIds[chainSlug],
+      chainId: chainIds[forkForTesting],
     },
+    rinkeby: {
+      url: getChainRpcUrl('rinkeby'),
+      accounts: [process.env.PK_RINKEBY_DEPLOYER ?? ""],
+    }
   },
+  // hardhat-deploy config:
+  namedAccounts: {
+    deployer: {
+      default: 0, // here this will by default take the first account as deployer
+      1: 0, // similarly on mainnet it will take the first account as deployer. Note though that depending on how hardhat network are configured, the account 0 on one network can be different than on another
+      4: '0xC103d1b071AFA925714eE55b2F4869300C4331C4', // but for rinkeby it will be a specific address, also for any chain with this id
+      "goerli": '0x84b9514E013710b9dD0811c9Fe46b837a4A0d8E0', //it can also specify a specific netwotk name (specified in hardhat.config.js)
+    },
+  }
 };
 
 export default config;
