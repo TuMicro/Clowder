@@ -57,7 +57,7 @@ export class ClowderSignature {
 
   static generateOrdersHashes() {
     const types = ClowderSignature.getBuyOrderV1Types();
-    SignatureUtils.generateSignedDataHash(types);
+    SignatureUtils.generateSignedDataStructHash(types);
   }
 
 }

@@ -1,9 +1,6 @@
 const Web3 = require("web3");
 import { BigNumber } from 'ethers';
-import { OpenSeaPort, Network } from 'opensea-js';
-import { getChainRpcUrl } from '../../hardhat.config';
 import { ETHER, MAX_UINT256 } from '../constants/ether';
-import { OpenSeaConstants } from '../constants/opensea';
 import { getUnixTimestamp, ONE_DAY_IN_SECONDS } from '../constants/time';
 import { OpenSeaSignature } from '../opensea/OpenSeaSignature';
 import { WETH_ADDRESS_MAINNET, WETH_ADDRESS_RINKEBY } from './addresses';

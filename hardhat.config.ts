@@ -11,6 +11,8 @@ import "hardhat-deploy";
 // tasks
 import "./tasks/execute_buy";
 import "./tasks/deployments";
+import "./tasks/list_on_opensea";
+
 const infuraApiKey: string | undefined = process.env.INFURA_API_KEY;
 if (!infuraApiKey) {
   throw new Error("Please set your INFURA_API_KEY in a .env file");
@@ -28,6 +30,25 @@ export const chainIds = {
   rinkeby: 4,
 };
 
+export function getVerificationConfig(chain: keyof typeof chainIds): null | {
+  apiKey : string,
+  apiBaseUrl: string,
+} {
+  if (chain === "rinkeby") {
+    return {
+      apiKey : process.env.ETHERSCAN_API_KEY ?? "",
+      apiBaseUrl: "https://api-rinkeby.etherscan.io",
+    }
+  }
+  if (chain === "mainnet") {
+    return {
+      apiKey : process.env.ETHERSCAN_API_KEY ?? "",
+      apiBaseUrl: "https://api.etherscan.io",
+    }
+  }
+  return null;
+}
+
 export function getChainRpcUrl(chain: keyof typeof chainIds): string {
   let jsonRpcUrl: string;
   switch (chain) {
@@ -44,6 +65,12 @@ export function getChainRpcUrl(chain: keyof typeof chainIds): string {
 }
 
 const forkForTesting: keyof typeof chainIds = 'rinkeby';
+const forkForVerification: keyof typeof chainIds = 'rinkeby';
+
+const verificationConfig = getVerificationConfig(forkForVerification);
+if (verificationConfig === null) {
+  throw new Error(`No verification config found for ${forkForVerification}`);
+}
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -70,7 +97,7 @@ const config: HardhatUserConfig = {
     rinkeby: {
       url: getChainRpcUrl('rinkeby'),
       accounts: [process.env.PK_RINKEBY_DEPLOYER ?? ""],
-    }
+    },
   },
   // hardhat-deploy config:
   namedAccounts: {
@@ -84,6 +111,10 @@ const config: HardhatUserConfig = {
 
   typechain: {
     externalArtifacts: ['./external_abis/**/*.json'],
+  },
+
+  verify : {
+    etherscan : verificationConfig,
   }
 };
 

@@ -1,10 +1,13 @@
 // code mostly from the opensea-js sdk
 const Web3 = require("web3");
+import { ethers } from 'ethers';
+import { _TypedDataEncoder } from 'ethers/lib/utils';
 import { OpenSeaPort, Network } from 'opensea-js';
-import { Asset } from "opensea-js/lib/types";
-import { getOrderHash } from "opensea-js/lib/utils/utils";
+import { Asset, UnhashedOrder } from "opensea-js/lib/types";
+import { TypedDataDomain } from "@ethersproject/abstract-signer";
 import { getChainRpcUrl } from "../../hardhat.config";
 import { OpenSeaConstants } from "../constants/opensea";
+import { SignatureUtils } from '../signature';
 
 export class OpenSeaSignature {
 
@@ -48,7 +51,7 @@ export class OpenSeaSignature {
     paymentTokenAddress?: string;
     extraBountyBasisPoints?: number;
     buyerAddress?: string;
-  }) {
+  }) : Promise<UnhashedOrder> {
     const order = await seaport._makeSellOrder({
       asset,
       quantity,
@@ -62,11 +65,33 @@ export class OpenSeaSignature {
       paymentTokenAddress: paymentTokenAddress || OpenSeaConstants.NULL_ADDRESS,
       extraBountyBasisPoints,
       buyerAddress: buyerAddress || OpenSeaConstants.NULL_ADDRESS,
+      
     });
-    const hashedOrder = {
-      ...order,
-      hash: getOrderHash(order),
+    return order;
+  }
+
+  static getDomain(isMainnet: boolean, verifyingContract: string): TypedDataDomain {
+    return {
+      name: OpenSeaConstants.EIP_712_WYVERN_DOMAIN_NAME,
+      version: OpenSeaConstants.EIP_712_WYVERN_DOMAIN_VERSION,
+      chainId: isMainnet ? 1 : 4,
+      verifyingContract,
     };
-    return hashedOrder;
+  }
+
+  static async getOrderHash(
+    // order: UnhashedOrder & { nonce: number }, 
+    order: any, // tested with the JSON of the order (order with nonce)
+    provider: ethers.providers.Provider, 
+    isMainnet: boolean) {
+    const eip712Domain = OpenSeaSignature.getDomain(isMainnet, order.exchange);
+    const onlyOrderTypes = {
+      Order: OpenSeaConstants.EIP_712_ORDER_TYPES.Order,
+    };
+    return await SignatureUtils.getDataHashToBeSigned(eip712Domain, 
+      onlyOrderTypes, 
+      order,
+      provider,
+    );
   }
 }

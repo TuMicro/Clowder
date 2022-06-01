@@ -105,10 +105,10 @@ contract ClowderMain is
     // executionId => Execution
     mapping(uint256 => Execution) public executions;
 
-    constructor(
-        address _WETH,
-        address _protocolFeeReceiver
-    ) {
+    /* Events */
+    event OpenSeaOrderSet(MarketplaceSignatureUtil.OpenSeaOrder order, bytes32 paramsOrderHash);
+
+    constructor(address _WETH, address _protocolFeeReceiver) {
         WETH = _WETH;
         protocolFeeReceiver = _protocolFeeReceiver;
 
@@ -381,14 +381,14 @@ contract ClowderMain is
         BuyOrderV1Functions.validateSignatures(orders, EIP712_DOMAIN_SEPARATOR);
 
         {
-            // OpenSea stuff
+            // OpenSea initialization and permissions
 
             // Approving OpenSea to move the item (if not approved already) and WETH (yes, OpenSea requires this for the way it works)
             // initialize opensea proxy (check opensea-js)
             OpenSeaOwnableDelegateProxy myProxy = MarketplaceSignatureUtil
                 .wyvernProxyRegistry
                 .proxies(address(this));
-                
+
             if (address(myProxy) == address(0)) {
                 myProxy = MarketplaceSignatureUtil
                     .wyvernProxyRegistry
@@ -414,32 +414,38 @@ contract ClowderMain is
             }
         }
 
-        // calculating list price
-        uint256 listPrice = (10_000 * executorPrice) /
-            (10_000 - marketplaceFee) +
-            1;
+        {
+            // OpenSea listing
 
-        // creating the OpenSea sell order
-        bytes32 _hash = MarketplaceSignatureUtil.buildAndGetOpenSeaOrderHash(
-            address(this),
-            execution.collection,
-            execution.tokenId,
-            listPrice,
-            minExpirationTime,
-            marketplaceFee,
-            WETH
-        );
-        require(_hash != 0, "Hash must not be 0");
+            // creating the OpenSea sell order
+            (
+                bytes32 _hash,
+                bytes32 paramsOrderHash,
+                MarketplaceSignatureUtil.OpenSeaOrder memory openSeaOrder
+            ) = MarketplaceSignatureUtil.buildAndGetOpenSeaOrderHash(
+                    address(this),
+                    execution.collection,
+                    execution.tokenId,
+                    // calculating list price:
+                    (10_000 * executorPrice) / (10_000 - marketplaceFee) + 1,
+                    minExpirationTime,
+                    marketplaceFee,
+                    WETH
+                );
+            require(_hash != 0, "Hash must not be 0");
 
-        // storing the hash by executionId (replacing the old one, so invalidating it)
-        execution.openSeaOrderHash = _hash;
-        // storing the last list price so we know how much to
-        // to be awarded to each owner
-        execution.sellPrice = price;
-        // storing the protocol fee
-        execution.sellProtocolFee = protocolFee;
-        // storing the listing end time
-        execution.listingEndTime = minExpirationTime;
+            // storing the hash by executionId (replacing the old one, so invalidating it)
+            execution.openSeaOrderHash = _hash;
+            // storing the last list price so we know how much to
+            // to be awarded to each owner
+            execution.sellPrice = price;
+            // storing the protocol fee
+            execution.sellProtocolFee = protocolFee;
+            // storing the listing end time
+            execution.listingEndTime = minExpirationTime;
+
+            emit OpenSeaOrderSet(openSeaOrder, paramsOrderHash);
+        }
     }
 
     function isValidSignature(bytes32 _hash, bytes calldata _signature)
@@ -489,7 +495,7 @@ contract ClowderMain is
     }
 
     function preClaim(uint256[] calldata executionIds) internal {
-         // loop over the executions
+        // loop over the executions
         for (uint256 i = 0; i < executionIds.length; i++) {
             uint256 executionId = executionIds[i];
             Execution storage execution = executions[executionId];

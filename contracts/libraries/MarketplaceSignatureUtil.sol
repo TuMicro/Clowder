@@ -1,7 +1,5 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4;
-
-import {ClowderMain} from "../ClowderMain.sol";
 
 interface OpenSea {
     // mapping(address => uint256) public nonces;
@@ -11,9 +9,11 @@ interface OpenSea {
 interface OpenSeaOwnableDelegateProxy {}
 
 interface OpenSeaProxyRegistry {
-
     // mapping(address => OpenSeaOwnableDelegateProxy) public proxies;
-    function proxies(address user) external view returns (OpenSeaOwnableDelegateProxy);
+    function proxies(address user)
+        external
+        view
+        returns (OpenSeaOwnableDelegateProxy);
 
     function registerProxy() external returns (OpenSeaOwnableDelegateProxy);
 }
@@ -161,16 +161,19 @@ library MarketplaceSignatureUtil {
     function getOpenSeaAskOrderHash(OpenSeaOrder memory order)
         internal
         view
-        returns (bytes32)
+        returns (bytes32 finalOrderHash, bytes32 openSeaParamsOrderWithNonceHash)
     {
-        return
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    OPENSEA_DOMAIN_SEPARATOR,
-                    hashOpenSeaOrder(order, openSea.nonces(order.maker))
-                )
-            );
+        openSeaParamsOrderWithNonceHash = hashOpenSeaOrder(
+            order,
+            openSea.nonces(order.maker)
+        );
+        finalOrderHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                OPENSEA_DOMAIN_SEPARATOR,
+                openSeaParamsOrderWithNonceHash
+            )
+        );
     }
 
     function buildAndGetOpenSeaOrderHash(
@@ -181,42 +184,48 @@ library MarketplaceSignatureUtil {
         uint256 expiration,
         uint256 feesFraction, // (royalties + protocol fee fraction) out of 10_000
         address paymentToken
-    ) public view returns (bytes32) {
-        return
-            getOpenSeaAskOrderHash(
-                MarketplaceSignatureUtil.OpenSeaOrder({
-                    exchange: address(openSea),
-                    maker: seller,
-                    taker: address(0),
-                    makerRelayerFee: feesFraction,
-                    takerRelayerFee: 0,
-                    makerProtocolFee: 0,
-                    takerProtocolFee: 0,
-                    feeMethod: FeeMethod.SplitFee,
-                    feeRecipient: openSeaFeeRecipient,
-                    side: SaleKindInterface.Side.Sell,
-                    saleKind: SaleKindInterface.SaleKind.FixedPrice,
-                    target: openSeaMerkleValidator,
-                    howToCall: AuthenticatedProxy.HowToCall.DelegateCall,
-                    staticTarget: address(0),
-                    staticExtradata: "",
-                    paymentToken: paymentToken,
-                    basePrice: listPrice,
-                    extra: 0,
-                    calldata2: bytes.concat(
-                        hex"fb16a595000000000000000000000000",
-                        abi.encodePacked(seller),
-                        hex"0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                        abi.encodePacked(collection),
-                        abi.encodePacked(tokenId),
-                        hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000"
-                    ),
-                    replacementPattern: hex"000000000000000000000000000000000000000000000000000000000000000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                    listingTime: block.timestamp,
-                    expirationTime: expiration,
-                    salt: block.timestamp
-                })
-            );
+    )
+        public
+        view
+        returns (
+            bytes32 finalOrderHash,
+            bytes32 paramsOrderHash,
+            OpenSeaOrder memory order
+        )
+    {
+        order = MarketplaceSignatureUtil.OpenSeaOrder({
+            exchange: address(openSea),
+            maker: seller,
+            taker: address(0),
+            makerRelayerFee: feesFraction,
+            takerRelayerFee: 0,
+            makerProtocolFee: 0,
+            takerProtocolFee: 0,
+            feeMethod: FeeMethod.SplitFee,
+            feeRecipient: openSeaFeeRecipient,
+            side: SaleKindInterface.Side.Sell,
+            saleKind: SaleKindInterface.SaleKind.FixedPrice,
+            target: openSeaMerkleValidator,
+            howToCall: AuthenticatedProxy.HowToCall.DelegateCall,
+            staticTarget: address(0),
+            staticExtradata: "",
+            paymentToken: paymentToken,
+            basePrice: listPrice,
+            extra: 0,
+            calldata2: bytes.concat(
+                hex"fb16a595000000000000000000000000",
+                abi.encodePacked(seller),
+                hex"0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                abi.encodePacked(collection),
+                abi.encodePacked(tokenId),
+                hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000"
+            ),
+            replacementPattern: hex"000000000000000000000000000000000000000000000000000000000000000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            listingTime: block.timestamp,
+            expirationTime: expiration,
+            salt: block.timestamp
+        });
+        (finalOrderHash, paramsOrderHash) = getOpenSeaAskOrderHash(order);
     }
 }
 
