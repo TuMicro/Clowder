@@ -1,5 +1,6 @@
 import { TypedDataDomain, TypedDataField } from "@ethersproject/abstract-signer";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { Wallet } from "ethers";
 import { splitSignature } from "ethers/lib/utils";
 import { SignatureUtils } from "../signature";
 import { BuyOrderV1, BuyOrderV1Basic } from "./model";
@@ -37,7 +38,7 @@ export class ClowderSignature {
   static async signBuyOrder(
     buyOrderV1Basic: BuyOrderV1Basic,
     domain: TypedDataDomain,
-    signer: SignerWithAddress) : Promise<BuyOrderV1> {
+    signer: SignerWithAddress | Wallet) : Promise<BuyOrderV1> {
     if (signer.address !== buyOrderV1Basic.signer) {
       throw new Error("signer address does not match");
     }

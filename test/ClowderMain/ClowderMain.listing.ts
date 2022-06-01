@@ -76,19 +76,9 @@ describe("Listing on OpenSea", () => {
   if (enableSellOrderExamplesObtention) {
     it("Getting sell order examples", async () => {
       // network dependant configuration:
-      const isMainnet = false; // if true API_KEY is required
-      const YOUR_API_KEY = ""; // not required for rinkeby
-      const provider = new Web3.providers.HttpProvider(getChainRpcUrl(isMainnet ? "mainnet" : "rinkeby"));
-      const networkName = isMainnet ? Network.Main : Network.Rinkeby;
-      const apiBaseUrl = isMainnet ? OpenSeaConstants.API_BASE_MAINNET : OpenSeaConstants.API_BASE_RINKEBY;
+      const isMainnet = false; // if true API_KEY is required     
+      const seaport = OpenSeaSignature.getNewSeaportClient(isMainnet);
       const paymentTokenAddress = isMainnet ? WETH_ADDRESS_MAINNET : WETH_ADDRESS_RINKEBY;
-
-
-      const seaport = new OpenSeaPort(provider, {
-        networkName,
-        apiKey: YOUR_API_KEY,
-        apiBaseUrl,
-      });
 
       const testNfts = isMainnet ? [
         {

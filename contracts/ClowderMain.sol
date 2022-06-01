@@ -103,7 +103,7 @@ contract ClowderMain is
     // sale proceeds (claimProceeds).
     mapping(address => mapping(uint256 => uint256)) public realContributions;
     // executionId => Execution
-    mapping(uint256 => Execution) executions;
+    mapping(uint256 => Execution) public executions;
 
     constructor(
         address _WETH,

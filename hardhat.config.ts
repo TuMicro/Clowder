@@ -3,11 +3,14 @@ dotenvConfig();
 
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomiclabs/hardhat-waffle"; // required for tests to work using ethers
-import '@typechain/hardhat';
-import '@nomiclabs/hardhat-ethers';
+import "@nomiclabs/hardhat-ethers";
+import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "hardhat-deploy";
 
+// tasks
+import "./tasks/execute_buy";
+import "./tasks/deployments";
 const infuraApiKey: string | undefined = process.env.INFURA_API_KEY;
 if (!infuraApiKey) {
   throw new Error("Please set your INFURA_API_KEY in a .env file");
@@ -77,6 +80,10 @@ const config: HardhatUserConfig = {
       4: '0xC103d1b071AFA925714eE55b2F4869300C4331C4', // but for rinkeby it will be a specific address, also for any chain with this id
       "goerli": '0x84b9514E013710b9dD0811c9Fe46b837a4A0d8E0', //it can also specify a specific netwotk name (specified in hardhat.config.js)
     },
+  },
+
+  typechain: {
+    externalArtifacts: ['./external_abis/**/*.json'],
   }
 };
 
