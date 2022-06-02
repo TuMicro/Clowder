@@ -2,7 +2,7 @@ const Web3 = require("web3");
 import { BigNumber } from 'ethers';
 import { ETHER, MAX_UINT256 } from '../constants/ether';
 import { getUnixTimestamp, ONE_DAY_IN_SECONDS } from '../constants/time';
-import { OpenSeaSignature } from '../opensea/OpenSeaSignature';
+import { OpenSeaSignature } from '../../src/external_order_signature/opensea_signature';
 import { WETH_ADDRESS_MAINNET, WETH_ADDRESS_RINKEBY } from './addresses';
 import { ClowderSignature } from './clowdersignature';
 import { deployForTests, DeployOutputs } from './deploy';

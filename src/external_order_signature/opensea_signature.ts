@@ -6,8 +6,8 @@ import { OpenSeaPort, Network } from 'opensea-js';
 import { Asset, UnhashedOrder } from "opensea-js/lib/types";
 import { TypedDataDomain } from "@ethersproject/abstract-signer";
 import { getChainRpcUrl } from "../../hardhat.config";
-import { OpenSeaConstants } from "../constants/opensea";
-import { SignatureUtils } from '../signature';
+import { OpenSeaConstants } from "../../test/constants/opensea";
+import { SignatureUtils } from '../../test/signature';
 
 export class OpenSeaSignature {
 

@@ -6,7 +6,7 @@ import { BuyOrderV1Basic } from "../test/ClowderMain/model";
 import { getOpenSeaListingPriceFromExecutionPrice, getSellExecutionPriceFromPrice } from "../test/ClowderMain/utils";
 import { ETHER } from "../test/constants/ether";
 import { getUnixTimestamp, ONE_DAY_IN_SECONDS } from "../test/constants/time";
-import { OpenSeaSignature } from "../test/opensea/OpenSeaSignature";
+import { OpenSeaSignature } from "../src/external_order_signature/opensea_signature";
 import { ClowderMain__factory, TestERC721__factory } from "../typechain-types";
 import { BigNumber as BigNumberJs } from 'bignumber.js'
 import { ECSignature } from "opensea-js/lib/types";
