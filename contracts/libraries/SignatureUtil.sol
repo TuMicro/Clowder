@@ -2,7 +2,6 @@
 pragma solidity >=0.8.4;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import {SignatureChecker} from '@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol';
 import {ECDSA} from '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
 

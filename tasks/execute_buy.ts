@@ -25,7 +25,8 @@ task("execute_buy", "Gets WETH, performs approvals and then performs a buy. "
     
     const testERC721Holder = new Wallet(process.env.PK_ERC721_HOLDER ?? "", ethers.provider);
     const executionId = BigNumber.from(0);
-    const testERC721TokenId = BigNumber.from(3622);
+    // const testERC721TokenId = BigNumber.from(7201); // looksrare team testing
+    const testERC721TokenId = BigNumber.from(2491);
     const contribution = parseEther("0.01");
 
     /* Preparation */

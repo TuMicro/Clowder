@@ -9,7 +9,7 @@ export function getBuyExecutionPriceFromPrice(price: BigNumber, feeFraction: Big
   return price.mul(10_000).div(feeFraction.add(10_000));
 }
 
-export function getOpenSeaListingPriceFromExecutionPrice(executionPrice: BigNumber,
+export function getMarketplaceListingPriceFromExecutionPrice(executionPrice: BigNumber,
   marketplaceFees: BigNumber, // out of 10_000
 ) {
   // (10_000 * executorPrice) / (10_000 - marketplaceFee) + 1

@@ -44,11 +44,16 @@ export async function deployForTests(): Promise<DeployOutputs> {
   const OpenSeaUtilFactory = await ethers.getContractFactory('OpenSeaUtil');
   const OpenSeaUtilLibrary = await OpenSeaUtilFactory.deploy()
   await OpenSeaUtilLibrary.deployed();
+
+  const LooksRareUtilFactory = await ethers.getContractFactory('LooksRareUtil');
+  const LooksRareUtilLibrary = await LooksRareUtilFactory.deploy()
+  await LooksRareUtilLibrary.deployed();
   
   const clowderMainFactory = await ethers.getContractFactory('ClowderMain', {
     libraries: {
       'BuyOrderV1Functions': buyOrderV1FunctionsLibrary.address,
       'OpenSeaUtil': OpenSeaUtilLibrary.address,
+      'LooksRareUtil': LooksRareUtilLibrary.address,
     }
   });
   

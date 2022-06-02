@@ -13,6 +13,8 @@ import "./tasks/execute_buy";
 import "./tasks/deployments";
 import "./tasks/list_on_opensea";
 import "./tasks/get_execution";
+import "./tasks/list_on_looksrare";
+import "./tasks/buy_on_looksrare";
 
 const infuraApiKey: string | undefined = process.env.INFURA_API_KEY;
 if (!infuraApiKey) {

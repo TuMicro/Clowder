@@ -14,6 +14,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment,) {
   const OpenSeaUtilLibrary = await deploy("OpenSeaUtil", {
     from: deployer,
   });
+  const LooksRareUtilLibrary = await deploy("LooksRareUtil", {
+    from: deployer,
+  });
 
   const clowderMain = await deploy("ClowderMain", {
     from: deployer,
@@ -21,6 +24,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment,) {
     libraries: {
       "BuyOrderV1Functions": buyOrderV1FunctionsLibrary.address,
       "OpenSeaUtil": OpenSeaUtilLibrary.address,
+      'LooksRareUtil': LooksRareUtilLibrary.address,
     }
   });
 

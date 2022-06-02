@@ -21,7 +21,8 @@ import {BuyOrderV1, BuyOrderV1Functions} from "./libraries/passiveorders/BuyOrde
 import {Execution} from "./libraries/execution/Execution.sol";
 import {SafeERC20Transfer} from "./libraries/assettransfer/SafeERC20Transfer.sol";
 import {SignatureUtil} from "./libraries/SignatureUtil.sol";
-import {OpenSeaUtil, OpenSeaOwnableDelegateProxy} from "./libraries/externalmarketplaces/OpenSeaUtil.sol";
+import {OpenSeaUtil} from "./libraries/externalmarketplaces/OpenSeaUtil.sol";
+import {LooksRareUtil} from "./libraries/externalmarketplaces/LooksRareUtil.sol";
 import {NftCollectionFunctions} from "./libraries/NftCollection.sol";
 
 contract ClowderMainOwnable is Ownable {
@@ -324,6 +325,10 @@ contract ClowderMain is
         // storing the price to be distributed among the owners
         execution.sellPrice = price;
 
+        // We don't store protocol fees here as they are only used for
+        // claiming them, and we don't need claiming here because
+        // we are already transferring them.
+
         /* Giving away execution flow */
 
         // Validate signatures (includes interaction with
@@ -452,6 +457,83 @@ contract ClowderMain is
         }
     }
 
+    function listOnLooksRare(
+        BuyOrderV1[] calldata orders,
+        uint256 executorPrice,
+        uint256 marketplaceFee, // out of 10_000
+        uint256 nonce
+    ) external nonReentrant {
+        require(
+            orders.length > 0,
+            "ListOnMarketplace: Must have at least one order"
+        );
+
+        uint256 protocolFee = (protocolFeeFractionFromSelling * executorPrice) /
+            10_000;
+        uint256 price = executorPrice - protocolFee;
+        uint256 executionId = orders[0].executionId;
+
+        Execution storage execution = executions[executionId];
+
+        /* Validations */
+
+        require(execution.collection != address(0), "Execution doesn't exist");
+
+        require(!execution.sold, "Execution already sold");
+
+        uint256 minExpirationTime = BuyOrderV1Functions
+            .validateSellOrdersParameters(
+                isUsedSellNonce,
+                realContributions,
+                orders,
+                executionId,
+                execution,
+                price,
+                minConsensusForSellingOverOrEqualBuyPrice,
+                minConsensusForSellingUnderBuyPrice
+            );
+
+        // Validate signatures (includes interaction with
+        // other contracts)
+        BuyOrderV1Functions.validateSignatures(orders, EIP712_DOMAIN_SEPARATOR);
+
+        LooksRareUtil.initializationAndPermissions(
+            address(this),
+            execution.collection
+        );
+
+        {
+            // LooksRare listing
+            (
+                bytes32 _hash,
+                // LooksRareUtil.MakerOrder memory order
+            ) = LooksRareUtil.buildAndGetOpenSeaOrderHash(
+                    address(this),
+                    execution.collection,
+                    execution.tokenId,
+                    // calculating list price:
+                    (10_000 * executorPrice) / (10_000 - marketplaceFee) + 1,
+                    minExpirationTime,
+                    marketplaceFee,
+                    WETH,
+                    nonce
+                );
+            require(_hash != 0, "Hash must not be 0");
+
+            _beforeStoringTheListingHash(
+                minExpirationTime,
+                price,
+                executionId,
+                protocolFee
+            );
+
+            // storing the corresponding hash by executionId
+            execution.looksRareOrderHash = _hash;
+
+            // emit OpenSeaOrderSet(openSeaOrder, paramsOrderHash);
+        }
+    }
+
     function isValidSignature(bytes32 _hash, bytes calldata _signature)
         external
         view
@@ -460,12 +542,18 @@ contract ClowderMain is
     {
         require(_hash != 0, "Hash must not be 0");
         uint256 executionId = uint256(bytes32(_signature[:32]));
+        uint256 marketplaceId = uint256(bytes32(_signature[32:64]));
+
         // Validate signatures
-        if (executions[executionId].openSeaOrderHash == _hash) {
+        if (
+            (marketplaceId == 0 &&
+                executions[executionId].openSeaOrderHash == _hash) ||
+            (marketplaceId == 1 &&
+                executions[executionId].looksRareOrderHash == _hash)
+        ) {
             return 0x1626ba7e;
-        } else {
-            return 0xffffffff;
         }
+        return 0xffffffff;
     }
 
     function claimNft(uint256 executionId, address to) external nonReentrant {

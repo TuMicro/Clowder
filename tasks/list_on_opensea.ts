@@ -3,7 +3,7 @@ import { task } from "hardhat/config";
 import { WETH_ADDRESS } from "../test/ClowderMain/addresses";
 import { ClowderSignature } from "../test/ClowderMain/clowdersignature";
 import { BuyOrderV1Basic } from "../test/ClowderMain/model";
-import { getOpenSeaListingPriceFromExecutionPrice, getSellExecutionPriceFromPrice } from "../test/ClowderMain/utils";
+import { getMarketplaceListingPriceFromExecutionPrice, getSellExecutionPriceFromPrice } from "../test/ClowderMain/utils";
 import { ETHER } from "../test/constants/ether";
 import { getUnixTimestamp, ONE_DAY_IN_SECONDS } from "../test/constants/time";
 import { OpenSeaSignature } from "../src/external_order_signature/opensea_signature";
@@ -76,7 +76,7 @@ task("list_on_opensea", ""
     // building the OpenSea sell (listing) order
     const txnReceipt = await txn.wait();
     const block = await ethers.provider.getBlock(txnReceipt.blockNumber);
-    const listingPrice = getOpenSeaListingPriceFromExecutionPrice(executionPrice, marketplaceFees);
+    const listingPrice = getMarketplaceListingPriceFromExecutionPrice(executionPrice, marketplaceFees);
     const orderWithoutNonce = await OpenSeaSignature.justCreateSellOrder(seaport, {
       asset: {
         tokenId: execution.tokenId.toString(),
@@ -94,7 +94,7 @@ task("list_on_opensea", ""
     // bytes memory signature = abi.encodePacked(r, s, v); // first 32 bytes must be the executionId
     const signature: ECSignature = {
       r: hexZeroPad(hexStripZeros(executionId.toHexString()), 32),
-      s: hexZeroPad(hexStripZeros(BigNumber.from(0).toHexString()), 32),
+      s: hexZeroPad(hexStripZeros(BigNumber.from(0).toHexString()), 32), // second 32 bytes must be the marketplaceId
       v: 0,
     };
     const order = {

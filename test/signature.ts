@@ -3,6 +3,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "ethers";
 import { keccak256, splitSignature, toUtf8Bytes, _TypedDataEncoder } from "ethers/lib/utils";
 
+export const VALID_SIGNATURE_BYTES = "0x1626ba7e";
 export class SignatureUtils {
 
   static generateSignedDataStructHash(types: Record<string, Array<TypedDataField>>) {
