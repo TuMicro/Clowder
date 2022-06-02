@@ -136,7 +136,9 @@ contract ClowderMain is
         );
 
         for (uint256 i = 0; i < buyOrderNonces.length; i++) {
-            isUsedBuyNonce[msg.sender][buyOrderNonces[i]] = true; // used
+            // if (!isUsedBuyNonce[msg.sender][buyOrderNonces[i]]) {
+                isUsedBuyNonce[msg.sender][buyOrderNonces[i]] = true; // used
+            // }
         }
     }
 

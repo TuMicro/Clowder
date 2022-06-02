@@ -114,7 +114,15 @@ describe("Execution functions", () => {
       testERC721Holder, testERC721TokenId } = deployOutputs;
 
     const buyOrders = [buyOrderSigned]; // signed by thirdParty
-    await clowderMain.connect(thirdParty).cancelBuyOrders(buyOrders.map(o => o.buyNonce));
+    const txn1 = await clowderMain.connect(thirdParty).cancelBuyOrders(buyOrders.map(o => o.buyNonce));
+    const txnReceipt1 = await txn1.wait();
+    // print gas costs:
+    console.log("gas costs 1 (there was change from false to true): " + txnReceipt1.gasUsed.toString());
+
+    const txn2 = await clowderMain.connect(thirdParty).cancelBuyOrders(buyOrders.map(o => o.buyNonce));
+    const txnReceipt2 = await txn2.wait();
+    // print gas costs:
+    console.log("gas costs 2 (no change from false to true): " + txnReceipt2.gasUsed.toString());
 
     await expect(clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
       [buyOrderSigned],
