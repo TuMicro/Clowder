@@ -41,14 +41,14 @@ export async function deployForTests(): Promise<DeployOutputs> {
   const buyOrderV1FunctionsLibrary = await buyOrderV1FunctionsFactory.deploy()
   await buyOrderV1FunctionsLibrary.deployed();
 
-  const marketplaceSignatureUtilFactory = await ethers.getContractFactory('MarketplaceSignatureUtil');
-  const marketplaceSignatureUtilLibrary = await marketplaceSignatureUtilFactory.deploy()
-  await marketplaceSignatureUtilLibrary.deployed();
+  const OpenSeaUtilFactory = await ethers.getContractFactory('OpenSeaUtil');
+  const OpenSeaUtilLibrary = await OpenSeaUtilFactory.deploy()
+  await OpenSeaUtilLibrary.deployed();
   
   const clowderMainFactory = await ethers.getContractFactory('ClowderMain', {
     libraries: {
       'BuyOrderV1Functions': buyOrderV1FunctionsLibrary.address,
-      'MarketplaceSignatureUtil': marketplaceSignatureUtilLibrary.address,
+      'OpenSeaUtil': OpenSeaUtilLibrary.address,
     }
   });
   

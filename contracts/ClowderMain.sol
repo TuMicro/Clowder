@@ -21,7 +21,7 @@ import {BuyOrderV1, BuyOrderV1Functions} from "./libraries/passiveorders/BuyOrde
 import {Execution} from "./libraries/execution/Execution.sol";
 import {SafeERC20Transfer} from "./libraries/assettransfer/SafeERC20Transfer.sol";
 import {SignatureUtil} from "./libraries/SignatureUtil.sol";
-import {MarketplaceSignatureUtil, OpenSeaOwnableDelegateProxy} from "./libraries/MarketplaceSignatureUtil.sol";
+import {OpenSeaUtil, OpenSeaOwnableDelegateProxy} from "./libraries/externalmarketplaces/OpenSeaUtil.sol";
 import {NftCollectionFunctions} from "./libraries/NftCollection.sol";
 
 contract ClowderMainOwnable is Ownable {
@@ -106,7 +106,10 @@ contract ClowderMain is
     mapping(uint256 => Execution) public executions;
 
     /* Events */
-    event OpenSeaOrderSet(MarketplaceSignatureUtil.OpenSeaOrder order, bytes32 paramsOrderHash);
+    event OpenSeaOrderSet(
+        OpenSeaUtil.OpenSeaOrder order,
+        bytes32 paramsOrderHash
+    );
 
     constructor(address _WETH, address _protocolFeeReceiver) {
         WETH = _WETH;
@@ -174,8 +177,9 @@ contract ClowderMain is
             sold: false,
             sellPrice: 0,
             listingEndTime: 0,
+            sellProtocolFee: 0,
             openSeaOrderHash: bytes32(0),
-            sellProtocolFee: 0
+            looksRareOrderHash: bytes32(0)
         });
 
         uint256 protocolFeeTransferred = 0;
@@ -341,6 +345,34 @@ contract ClowderMain is
         );
     }
 
+    function _beforeStoringTheListingHash(
+        uint256 expirationTime,
+        uint256 sellPrice,
+        uint256 executionId,
+        uint256 protocolFee
+    ) internal {
+        Execution storage execution = executions[executionId];
+
+        // Disable old listing signatures in case new listing parameters are different
+        // from the ones in the execution object.
+        // This is done to due to the fact that we don't support concurrent listings
+        // with different prices.
+        if (
+            execution.listingEndTime != expirationTime ||
+            execution.sellPrice != sellPrice
+        ) {
+            execution.openSeaOrderHash = 0;
+            execution.looksRareOrderHash = 0;
+        }
+        // storing the listing end time
+        execution.listingEndTime = expirationTime;
+        // storing the last list price so we know how much to
+        // to be awarded to each owner
+        execution.sellPrice = sellPrice;
+        // storing the protocol fee
+        execution.sellProtocolFee = protocolFee;
+    }
+
     function listOnOpenSea(
         BuyOrderV1[] calldata orders,
         uint256 executorPrice,
@@ -380,39 +412,11 @@ contract ClowderMain is
         // other contracts)
         BuyOrderV1Functions.validateSignatures(orders, EIP712_DOMAIN_SEPARATOR);
 
-        {
-            // OpenSea initialization and permissions
-
-            // Approving OpenSea to move the item (if not approved already) and WETH (yes, OpenSea requires this for the way it works)
-            // initialize opensea proxy (check opensea-js)
-            OpenSeaOwnableDelegateProxy myProxy = MarketplaceSignatureUtil
-                .wyvernProxyRegistry
-                .proxies(address(this));
-
-            if (address(myProxy) == address(0)) {
-                myProxy = MarketplaceSignatureUtil
-                    .wyvernProxyRegistry
-                    .registerProxy();
-            }
-
-            IERC721 erc721 = IERC721(execution.collection);
-            if (!erc721.isApprovedForAll(address(this), address(myProxy))) {
-                erc721.setApprovalForAll(address(myProxy), true);
-            }
-
-            IERC20 erc20 = IERC20(WETH);
-            if (
-                erc20.allowance(
-                    address(this),
-                    MarketplaceSignatureUtil.WyvernTokenTransferProxy
-                ) < type(uint256).max
-            ) {
-                erc20.approve(
-                    MarketplaceSignatureUtil.WyvernTokenTransferProxy,
-                    type(uint256).max
-                );
-            }
-        }
+        OpenSeaUtil.initializationAndPermissions(
+            address(this),
+            execution.collection,
+            WETH
+        );
 
         {
             // OpenSea listing
@@ -421,8 +425,8 @@ contract ClowderMain is
             (
                 bytes32 _hash,
                 bytes32 paramsOrderHash,
-                MarketplaceSignatureUtil.OpenSeaOrder memory openSeaOrder
-            ) = MarketplaceSignatureUtil.buildAndGetOpenSeaOrderHash(
+                OpenSeaUtil.OpenSeaOrder memory openSeaOrder
+            ) = OpenSeaUtil.buildAndGetOpenSeaOrderHash(
                     address(this),
                     execution.collection,
                     execution.tokenId,
@@ -434,15 +438,15 @@ contract ClowderMain is
                 );
             require(_hash != 0, "Hash must not be 0");
 
-            // storing the hash by executionId (replacing the old one, so invalidating it)
+            _beforeStoringTheListingHash(
+                minExpirationTime,
+                price,
+                executionId,
+                protocolFee
+            );
+
+            // storing the corresponding hash by executionId
             execution.openSeaOrderHash = _hash;
-            // storing the last list price so we know how much to
-            // to be awarded to each owner
-            execution.sellPrice = price;
-            // storing the protocol fee
-            execution.sellProtocolFee = protocolFee;
-            // storing the listing end time
-            execution.listingEndTime = minExpirationTime;
 
             emit OpenSeaOrderSet(openSeaOrder, paramsOrderHash);
         }
@@ -494,7 +498,7 @@ contract ClowderMain is
         );
     }
 
-    function preClaim(uint256[] calldata executionIds) internal {
+    function _preClaim(uint256[] calldata executionIds) internal {
         // loop over the executions
         for (uint256 i = 0; i < executionIds.length; i++) {
             uint256 executionId = executionIds[i];
@@ -533,7 +537,7 @@ contract ClowderMain is
     function claimProceeds(uint256[] calldata executionIds, address to)
         external
     {
-        preClaim(executionIds);
+        _preClaim(executionIds);
 
         uint256 proceedsSum = 0;
         // loop over the executions
@@ -556,7 +560,7 @@ contract ClowderMain is
     }
 
     function claimProtocolFees(uint256[] calldata executionIds) external {
-        preClaim(executionIds);
+        _preClaim(executionIds);
 
         uint256 feesSum = 0;
         // loop over the executions

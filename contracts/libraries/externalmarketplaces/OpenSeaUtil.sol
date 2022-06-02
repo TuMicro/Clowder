@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4;
 
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
+
 interface OpenSea {
     // mapping(address => uint256) public nonces;
     function nonces(address user) external view returns (uint256);
@@ -18,7 +22,7 @@ interface OpenSeaProxyRegistry {
     function registerProxy() external returns (OpenSeaOwnableDelegateProxy);
 }
 
-library MarketplaceSignatureUtil {
+library OpenSeaUtil {
     // mainnet
     // OpenSea public constant openSea =
     //     OpenSea(0x7f268357A8c2552623316e2562D90e642bB538E5);
@@ -161,7 +165,10 @@ library MarketplaceSignatureUtil {
     function getOpenSeaAskOrderHash(OpenSeaOrder memory order)
         internal
         view
-        returns (bytes32 finalOrderHash, bytes32 openSeaParamsOrderWithNonceHash)
+        returns (
+            bytes32 finalOrderHash,
+            bytes32 openSeaParamsOrderWithNonceHash
+        )
     {
         openSeaParamsOrderWithNonceHash = hashOpenSeaOrder(
             order,
@@ -174,6 +181,42 @@ library MarketplaceSignatureUtil {
                 openSeaParamsOrderWithNonceHash
             )
         );
+    }
+
+    function initializationAndPermissions(
+        address user, 
+        address erc721address, 
+        address WETH
+    ) public {
+        // OpenSea initialization and permissions
+
+        // Approving OpenSea to move the item (if not approved already) and WETH (yes, OpenSea requires this for the way it works)
+        // initialize opensea proxy (check opensea-js)
+        OpenSeaOwnableDelegateProxy myProxy = OpenSeaUtil
+            .wyvernProxyRegistry
+            .proxies(user);
+
+        if (address(myProxy) == address(0)) {
+            myProxy = OpenSeaUtil.wyvernProxyRegistry.registerProxy();
+        }
+
+        IERC721 erc721 = IERC721(erc721address);
+        if (!erc721.isApprovedForAll(user, address(myProxy))) {
+            erc721.setApprovalForAll(address(myProxy), true);
+        }
+
+        IERC20 erc20 = IERC20(WETH);
+        if (
+            erc20.allowance(
+                user,
+                OpenSeaUtil.WyvernTokenTransferProxy
+            ) < type(uint256).max
+        ) {
+            erc20.approve(
+                OpenSeaUtil.WyvernTokenTransferProxy,
+                type(uint256).max
+            );
+        }
     }
 
     function buildAndGetOpenSeaOrderHash(
@@ -193,7 +236,7 @@ library MarketplaceSignatureUtil {
             OpenSeaOrder memory order
         )
     {
-        order = MarketplaceSignatureUtil.OpenSeaOrder({
+        order = OpenSeaUtil.OpenSeaOrder({
             exchange: address(openSea),
             maker: seller,
             taker: address(0),
