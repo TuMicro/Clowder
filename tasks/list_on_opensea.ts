@@ -14,6 +14,7 @@ import { hexStripZeros, hexZeroPad } from "ethers/lib/utils";
 import { sleep } from "../src/utils";
 import { getOrderHash } from "opensea-js/lib/utils/utils";
 
+// NOTE: this doesn't work!!! (as of 01/06/2022)
 task("list_on_opensea", ""
   + "Make sure the accounts have enough ETH and the parameters are correct.")
   .setAction(async (taskArgs, hre) => {
@@ -136,22 +137,7 @@ task("list_on_opensea", ""
     console.log("Listing successful! 👌");
   });
 
-
-
-task("get_execution", "Gets execution information.")
-  .addParam("execution", "The execution id")
-  .setAction(async (taskArgs, hre) => {
-    const { ethers, deployments } = hre;
-    const clowderDeployment = await deployments.get("ClowderMain");
-    const clowderMain = ClowderMain__factory.connect(clowderDeployment.address, ethers.provider);
-    const e = await clowderMain.executions(BigNumber.from(taskArgs.execution));
-
-    console.log(e);
-    console.log(JSON.stringify(e));
-
-  });
-
-task("push_order", "")
+task("get_order_hashes", "")
   .setAction(async (taskArgs, hre) => {
     const { ethers, deployments, getChainId } = hre;
     const clowderDeployment = await deployments.get("ClowderMain");
@@ -162,6 +148,7 @@ task("push_order", "")
     const isMainnet = chainId === 1;
     const seaport = OpenSeaSignature.getNewSeaportClient(isMainnet);
 
+    // getting the opensea order from the ouput of list_on_opensea
     const orderWithSignature = { "exchange": "0xdd54d660178b28f6033a953b0e55073cfa7e3744", "maker": "0x0b773fb8275d656c714123a9885c83a03c062dea", "taker": "0x0000000000000000000000000000000000000000", "quantity": "1", "makerRelayerFee": "250", "takerRelayerFee": "0", "makerProtocolFee": "0", "takerProtocolFee": "0", "makerReferrerFee": "0", "waitingForBestCounterOrder": false, "feeMethod": 1, "feeRecipient": "0x5b3256965e7c3cf26e11fcaf296dfc8807c01073", "side": 1, "saleKind": 0, "target": "0x45b594792a5cdc008d0de1c1d69faa3d16b3ddc1", "howToCall": 1, "calldata": "0xfb16a5950000000000000000000000000b773fb8275d656c714123a9885c83a03c062dea00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000381916e8172d96cddc682490b522e4f539f85d60000000000000000000000000000000000000000000000000000000000000e26000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000", "replacementPattern": "0x000000000000000000000000000000000000000000000000000000000000000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "staticTarget": "0x0000000000000000000000000000000000000000", "staticExtradata": "0x", "paymentToken": "0xc778417e063141139fce010982780140aa0cd5ab", "basePrice": "31080031080031080032", "extra": "0", "listingTime": "1654101216", "expirationTime": "1654187606", "salt": "1654101216", "metadata": { "asset": { "id": "3622", "address": "0x0381916e8172d96cddc682490b522e4f539f85d6" }, "schema": "ERC721" }, "hash": "0xc50e483fd0c1226cfe8f4400536cdc50790ac60ea8076ad975a52c40587281ca", "r": "0x0000000000000000000000000000000000000000000000000000000000000000", "s": "0x0000000000000000000000000000000000000000000000000000000000000000", "v": 0, "nonce": 0 };
     const trueHashes = await OpenSeaSignature.getOrderHash(orderWithSignature, ethers.provider, isMainnet);
 

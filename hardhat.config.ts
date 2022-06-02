@@ -12,6 +12,7 @@ import "hardhat-deploy";
 import "./tasks/execute_buy";
 import "./tasks/deployments";
 import "./tasks/list_on_opensea";
+import "./tasks/get_execution";
 
 const infuraApiKey: string | undefined = process.env.INFURA_API_KEY;
 if (!infuraApiKey) {
