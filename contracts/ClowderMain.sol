@@ -350,6 +350,9 @@ contract ClowderMain is
             msg.sender,
             execution.tokenId
         );
+
+        // TODO: should we do this?:
+        // require(clowder is new owner of tokenId in collection, according to collection of course);
     }
 
     function _beforeStoringTheListingHash(
