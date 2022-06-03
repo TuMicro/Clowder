@@ -30,7 +30,7 @@ library LooksRareUtil {
         }
     }
 
-    function buildAndGetOpenSeaOrderHash(
+    function buildAndGetMarketplaceOrderHash(
         address seller,
         address collection,
         uint256 tokenId,

@@ -512,7 +512,7 @@ contract ClowderMain is
             (
                 bytes32 _hash,
                 // LooksRareUtil.MakerOrder memory order
-            ) = LooksRareUtil.buildAndGetOpenSeaOrderHash(
+            ) = LooksRareUtil.buildAndGetMarketplaceOrderHash(
                     address(this),
                     execution.collection,
                     execution.tokenId,

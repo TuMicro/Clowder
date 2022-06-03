@@ -57,7 +57,7 @@ npx hardhat --network rinkeby etherscan-verify --solc-input
 npx hardhat deployments --network rinkeby
 # get execution information
 npx hardhat get_execution --execution 0 --network rinkeby
-# flatten solidity (not working, it says there are cyclic dependencies)
+# flatten solidity
 npx hardhat flatten > flattened.sol
 ```
 
