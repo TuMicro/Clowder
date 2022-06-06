@@ -103,8 +103,8 @@ library BuyOrderV1Functions {
         uint256 executionId,
         Execution storage execution,
         uint256 price,
-        uint256 minConsensusForSellingOverOrEqualBuyPrice,
-        uint256 minConsensusForSellingUnderBuyPrice
+        uint256 minConsensusForSellingOverBuyPrice,
+        uint256 minConsensusForSellingUnderOrEqualBuyPrice
     ) public view returns (uint256) {
         // mapping(address => mapping(uint256 => bool))
         //     storage _isUsedSellNonce = isUsedSellNonce;
@@ -161,19 +161,19 @@ library BuyOrderV1Functions {
         } // ends the voters for loop
 
         // Validating price consensus
-        if (price >= execution.buyPrice) {
+        if (price > execution.buyPrice) {
             // we need at least N out of 10_000 consensus
             require(
                 realContributionOnBoard * 10_000 >=
                     execution.buyPrice *
-                        minConsensusForSellingOverOrEqualBuyPrice,
+                        minConsensusForSellingOverBuyPrice,
                 "Selling over or equal buyPrice: consensus not reached"
             );
         } else {
             // we need a different consensus ratio
             require(
                 realContributionOnBoard * 10_000 >=
-                    execution.buyPrice * minConsensusForSellingUnderBuyPrice,
+                    execution.buyPrice * minConsensusForSellingUnderOrEqualBuyPrice,
                 "Selling under buyPrice: consensus not reached"
             );
         }

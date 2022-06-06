@@ -340,8 +340,8 @@ describe("Execution functions", () => {
       // asserting fees and consensus
       const protocolSellingFeeFraction = BigNumber.from(0);
       await clowderMain.connect(owner).changeProtocolFeeFractionFromSelling(protocolSellingFeeFraction);
-      const minConsensusForSellingOverOrEqualBuyPrice = BigNumber.from(5_000);
-      await clowderMain.connect(owner).changeMinConsensusForSellingOverOrEqualBuyPrice(minConsensusForSellingOverOrEqualBuyPrice);
+      const minConsensusForSellingOverBuyPrice = BigNumber.from(5_000);
+      await clowderMain.connect(owner).changeminConsensusForSellingOverBuyPrice(minConsensusForSellingOverBuyPrice);
 
       // approve the clowder contract to spend wethHolder's WETH
       await wethTokenContract.connect(wethHolder).approve(
@@ -351,7 +351,7 @@ describe("Execution functions", () => {
 
       let votes = BigNumber.from(0);
       let slice_of_seller_votes = 0;
-      while (votes.mul(10_000).lt(actualPricePaidByBuyers.mul(minConsensusForSellingOverOrEqualBuyPrice))) {
+      while (votes.mul(10_000).lt(actualPricePaidByBuyers.mul(minConsensusForSellingOverBuyPrice))) {
         votes = votes.add(buyersRealContributions[slice_of_seller_votes]);
         slice_of_seller_votes++;
       }
@@ -362,12 +362,12 @@ describe("Execution functions", () => {
         "Selling over or equal buyPrice: consensus not reached";
       await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
         orders.slice(0, slice_of_seller_votes - 1), // not enough votes
-        actualPricePaidByBuyers,
+        actualPricePaidByBuyers.add(1), // price greater then the buy price
       )).to.be.revertedWith(revertMessage);
 
       const sellTxn = await clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
         orders.slice(0, slice_of_seller_votes),
-        actualPricePaidByBuyers,
+        actualPricePaidByBuyers.add(1), // price greater then the buy price
       );
       const sellReceipt = await sellTxn.wait();
       // print gas used

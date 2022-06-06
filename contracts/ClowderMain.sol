@@ -29,8 +29,8 @@ contract ClowderMainOwnable is Ownable {
     address public protocolFeeReceiver;
     uint256 public protocolFeeFraction = 100; // out of 10_000
     uint256 public protocolFeeFractionFromSelling = 100; // out of 10_000
-    uint256 public minConsensusForSellingOverOrEqualBuyPrice = 5_000; // out of 10_000
-    uint256 public minConsensusForSellingUnderBuyPrice = 10_000; // out of 10_000
+    uint256 public minConsensusForSellingOverBuyPrice = 5_000; // out of 10_000
+    uint256 public minConsensusForSellingUnderOrEqualBuyPrice = 10_000; // out of 10_000
 
     /**
      * @notice [onlyOwner] Change the protocol fee receiver
@@ -66,22 +66,22 @@ contract ClowderMainOwnable is Ownable {
 
     /**
      * @notice [onlyOwner] Change the min consensus for selling over or equal to buy price
-     * @param _minConsensusForSellingOverOrEqualBuyPrice new min consensus (out of 10_000)
+     * @param _minConsensusForSellingOverBuyPrice new min consensus (out of 10_000)
      */
-    function changeMinConsensusForSellingOverOrEqualBuyPrice(
-        uint256 _minConsensusForSellingOverOrEqualBuyPrice
+    function changeminConsensusForSellingOverBuyPrice(
+        uint256 _minConsensusForSellingOverBuyPrice
     ) external onlyOwner {
-        minConsensusForSellingOverOrEqualBuyPrice = _minConsensusForSellingOverOrEqualBuyPrice;
+        minConsensusForSellingOverBuyPrice = _minConsensusForSellingOverBuyPrice;
     }
 
     /**
      * @notice [onlyOwner] Change the min consensus for selling under buy price
-     * @param _minConsensusForSellingUnderBuyPrice new min consensus (out of 10_000)
+     * @param _minConsensusForSellingUnderOrEqualBuyPrice new min consensus (out of 10_000)
      */
-    function changeMinConsensusForSellingUnderBuyPrice(
-        uint256 _minConsensusForSellingUnderBuyPrice
+    function changeminConsensusForSellingUnderOrEqualBuyPrice(
+        uint256 _minConsensusForSellingUnderOrEqualBuyPrice
     ) external onlyOwner {
-        minConsensusForSellingUnderBuyPrice = _minConsensusForSellingUnderBuyPrice;
+        minConsensusForSellingUnderOrEqualBuyPrice = _minConsensusForSellingUnderOrEqualBuyPrice;
     }
 }
 
@@ -313,8 +313,8 @@ contract ClowderMain is
             executionId,
             execution,
             price,
-            minConsensusForSellingOverOrEqualBuyPrice,
-            minConsensusForSellingUnderBuyPrice
+            minConsensusForSellingOverBuyPrice,
+            minConsensusForSellingUnderOrEqualBuyPrice
         );
 
         /* Invalidations */
@@ -414,8 +414,8 @@ contract ClowderMain is
                 executionId,
                 execution,
                 price,
-                minConsensusForSellingOverOrEqualBuyPrice,
-                minConsensusForSellingUnderBuyPrice
+                minConsensusForSellingOverBuyPrice,
+                minConsensusForSellingUnderOrEqualBuyPrice
             );
 
         // Validate signatures (includes interaction with
@@ -494,8 +494,8 @@ contract ClowderMain is
                 executionId,
                 execution,
                 price,
-                minConsensusForSellingOverOrEqualBuyPrice,
-                minConsensusForSellingUnderBuyPrice
+                minConsensusForSellingOverBuyPrice,
+                minConsensusForSellingUnderOrEqualBuyPrice
             );
 
         // Validate signatures (includes interaction with
