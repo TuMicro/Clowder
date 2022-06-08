@@ -22,13 +22,20 @@ npx hardhat --network <networkName> deploy [options and flags]
 
 Use this first for testing:
 ```
-npx hardhat --network hardhat deploy
+npx hardhat --network hardhat deploy --report-gas
 ```
 
 Live networks:
 Make sure to change the addresses (mainnet vs rinkeby) in externalmarketplaces libraries:
 ```
 npx hardhat --network rinkeby deploy
+
+npx hardhat --network optimism deploy
+
+# note that gas is very different in arbitrum
+# so be careful, and I mean gas units
+npx hardhat --network arbitrum deploy
+
 ```
 
 Logs:
@@ -37,6 +44,9 @@ Logs:
   * 3: https://rinkeby.etherscan.io/address/0x0B773FB8275d656c714123A9885C83A03C062DeA
   * 4: https://rinkeby.etherscan.io/address/0x85a49C39d3A9cfd4c2459EFA8eCe5389277E304c (for the looksrare team testing)
   * 5: https://rinkeby.etherscan.io/address/0x0012292bCfbD99fde00faE872668379E5F0090C5
+
+  * 0: https://arbiscan.io/address/0xF032987Bd3E4397d5E0DeB9cC87187Bdd1fE55e9
+
 * Rinkeby:
   * Owner/deployer: 0xC103d1b071AFA925714eE55b2F4869300C4331C4
   * User: 0xDE33b78e877e6B20b2Fe54BFA4dBc4C67A3c6CE3
