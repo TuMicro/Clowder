@@ -33,6 +33,9 @@ struct BuyOrderV1 {
     uint8 v;
     bytes32 r;
     bytes32 s;
+
+    // On another note: maybe be careful when using bytes (no fixed) in this struct
+    // Read the wyvern 2.2 exploit: https://nft.mirror.xyz/VdF3BYwuzXgLrJglw5xF6CHcQfAVbqeJVtueCr4BUzs
 }
 
 /**
