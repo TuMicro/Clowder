@@ -353,6 +353,8 @@ contract ClowderMain is
 
         // TODO: should we do this?:
         // require(clowder is new owner of tokenId in collection, according to collection of course);
+        // hmm, but, if the collection contract said transfer was successful, then 
+        // it could also lie in here when asking for the new owner of the tokenId
     }
 
     function _beforeStoringTheListingHash(
