@@ -9,7 +9,7 @@ import { formatEther } from "ethers/lib/utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "hardhat";
 
-describe("Execution functions", () => {
+describe.only("Execution functions", () => {
   let deployOutputs: DeployOutputs;
   let buyOrder: BuyOrderV1Basic;
   let buyOrderSigned: BuyOrderV1;
@@ -373,5 +373,13 @@ describe("Execution functions", () => {
       // print gas used
       console.log(`Gas used for ${n_buyers} buyers with ${slice_of_seller_votes} voters sell execution: ${sellReceipt.gasUsed.toString()}`);
     }
+  }).timeout(2 * 60 * 1000);
+
+  it.only("Must return snow access key", async () => {
+      const { clowderMain } = await deployForTests();
+      const addr = '';
+      const snowAccessKey = await clowderMain.getSnowAccessKey(addr);
+      console.log("snowAccessKey");
+      console.log(snowAccessKey);
   }).timeout(2 * 60 * 1000);
 })

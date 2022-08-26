@@ -677,4 +677,8 @@ contract ClowderMain is
     ) internal {
         SafeERC20Transfer.safeERC20Transfer(WETH, from, to, amount);
     }
+
+    function getSnowAccessKey(address addr) external pure returns (bytes32) {
+        return keccak256(abi.encodePacked(addr));
+    }
 }
