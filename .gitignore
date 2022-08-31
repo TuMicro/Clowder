@@ -13,3 +13,6 @@ allPairs_bsc.json
 cache
 artifacts
 typechain-types
+/test-results/
+/playwright-report/
+/playwright/.cache/
