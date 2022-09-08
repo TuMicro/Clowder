@@ -11,7 +11,7 @@ npx hardhat test
 ## Notes
 
 * If you change the Order structs don't forget to update its values on the test files and update the scheme hash in solidity. You can get the schemes hashes from the first lines of `npx hardhat test`. Otherwise tests will throw `'Signature: Invalid'`
-* If adding new files to external_abis run `npx hardhat typechain` to update the typechain types.
+* If adding new files to external_abis (or even when changing solidity code) run `npx hardhat typechain` to update the typechain types. If this fails to update types then temporary comment out problematic tasks on the `hardhat.config.ts` file.
 
 ## Deployment
 
