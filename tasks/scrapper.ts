@@ -82,12 +82,17 @@ async function getOrbiNfts(collectionId: string, numberOfItems: number): Promise
     "variables": {
       "tokenFilter": {
         "nftAddress": collectionId,
-        "listed": true
+        "listed": true,
+        "isERC1155": false,
+        "payToken_in": [
+          "0x0000000000000000000000000000000000000000", //EVMOS
+          "0xd4949664cd82660aae99bedc034a0dea8a0bd517" //WEVMOS
+        ],
       },
       "first": numberOfItems,
       "skip": 0,
-      "orderBy": "listedTime",
-      "orderDirection": "desc"
+      "orderBy": "pricePerItem",
+      "orderDirection": "asc"
     },
     "query": "query userTokens($nftAddress: String, $first: Int, $skip: Int, $tokenFilter: Token_filter, $orderBy: BigInt, $orderDirection: String) {\n  tokens(\n    first: $first\n    skip: $skip\n    where: $tokenFilter\n    orderBy: $orderBy\n    orderDirection: $orderDirection\n  ) {\n    id\n    owner\n    listed\n    tokenId\n    isERC1155\n    nftAddress\n    pricePerItem\n    listedTime\n    lastSaleTime\n    lastSalePrice\n    payToken\n    lastSalePayToken\n    name\n    auction {\n      payToken\n      currentBidder\n      endTime\n      id\n      maximumBid\n      nftAddress\n      owner\n      startTime\n      reservePrice\n      tokenId\n      __typename\n    }\n    __typename\n  }\n}\n"
   };
@@ -210,50 +215,40 @@ async function getCollectionDataForClowder(url: string, minNfts: number) {
 
   if (orbiCollection == null) return null;
 
-  //getting floor data
-  const floorPrice = await getFloorPrice(collId);
-  console.log("floorPrice: ", floorPrice);
-  if (floorPrice == null) return null;
-
-  const nftsStored = orbiCollection.nfts?.length ?? 0;
-  console.log("nftsStored: ", nftsStored);
-
-  if (nftsStored >= minNfts) return orbiCollection;
-
   //getting nfts data
-  console.log("scrapping nfts...")
-  await addDataToOrbimarketCollection(collId, {
-    floorPrice: floorPrice,
-  });
-
-  //getting nfts data
+  console.log("getting nfts...");
   const nfts = await getOrbiNfts(collId, minNfts);
   //console.log("nfts: ", nfts);
   const nftsMergeds: Partial<OrbiMarketNFT>[] = [];
+  let floorPrice = null;
 
-  if (nfts == null) return null;
+  if (nfts != null && nfts.length !== 0) {
+    floorPrice = nfts[0].pricePerItem;    
 
-  for (const nft of nfts) {
+    for (const nft of nfts) {
 
-    const nftExtraData = await getOrbiNFTExtraData({ address: nft.nftAddress, token: nft.tokenId, type: nft.isERC1155 ? "1155" : "721" });
-    //console.log("nftExtraData: ", nftExtraData);
-    //merge nft and nftExtraData
-    const nftMerged = { ...nft, ...nftExtraData };
-    //console.log("nftMerged: ", nftMerged);
+      const nftExtraData = await getOrbiNFTExtraData({ address: nft.nftAddress, token: nft.tokenId, type: nft.isERC1155 ? "1155" : "721" });
+      //console.log("nftExtraData: ", nftExtraData);
+      //merge nft and nftExtraData
+      const nftMerged = { ...nft, ...nftExtraData };
+      //console.log("nftMerged: ", nftMerged);
 
-    await storeOrbimarketNFT(nftMerged.id, nftMerged);
-    console.log("nft stored: " + nftMerged.id);
+      await storeOrbimarketNFT(nftMerged.id, nftMerged);
+      console.log("nft stored: " + nftMerged.id);
 
-    nftsMergeds.push(nftMerged);
+      nftsMergeds.push(nftMerged);
+    }
   }
 
-  await addDataToOrbimarketCollection(collId, { nfts: nftsMergeds });
+  console.log("floorPrice: ", floorPrice);
+
+  await addDataToOrbimarketCollection(collId, { nfts: nftsMergeds, floorPrice: floorPrice, });
 
   return { ...orbiCollection, nfts: nftsMergeds, floorPrice: floorPrice };
 }
 
 //const success = scrappingOrbiMarketCollectionsToFirebase();
-const urlColl = "https://www.orbitmarket.io/collection/0xedf6e953f0ecfc10aee6d3a8508b5fbe14b94a2c";
+const urlColl = "https://www.orbitmarket.io/collection/0xe96cecc1c15ca7d80fb76ba74727a1c39e28b1db";
 const orbiCollectionData = getCollectionDataForClowder(urlColl, 5).then((data) => {
   console.log("collectionData:", data);
 });
