@@ -54,11 +54,6 @@ Logs:
 
 ## Post-deployment tasks
 
-Check all the tasks running:
-```
-npx hardhat
-```
-
 Some useful ones:
 ```
 # verify source code (make sure to set the config with forkForVerification)
@@ -71,8 +66,15 @@ npx hardhat get_execution --execution 0 --network rinkeby
 npx hardhat flatten > flattened.sol
 ```
 
+### About the custom hardhat tasks implemented
 
-Other useful ones (careful):
+
+Check all the tasks:
+```
+npx hardhat
+```
+
+Run some useful ones (careful):
 ```
 # if it fails for not approving just try again: (make sure the ERC721holder has the NFT as set up in the task)
 npx hardhat execute_buy --network rinkeby
@@ -87,4 +89,11 @@ npx hardhat validate_looksrare_signature --network rinkeby
 # if it fails for not approving just try again: 
 npx hardhat buy_on_looksrare --network rinkeby
 
+```
+
+## Utils
+
+Showing the commits tree:
+```
+git log --oneline --graph --decorate --all
 ```
