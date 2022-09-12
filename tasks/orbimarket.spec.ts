@@ -1,26 +1,32 @@
 import assert from "assert";
 import { storeOrbimarketCollection } from "../src/firestore-utils/orbimarket";
 import { OrbiMarketCollection } from "../src/model/firestore/orbimarket";
+import { getCollectionDataForClowder, getTxnData } from "./orbimarket";
+
 
 const enabled = true;
 
 if (enabled) {
-  describe("scrapperOrbimarket: firebase functions", () => {
-    it("Must store or update orbimarket collection on Firestore and get it", async () => {                
-      
-      const collection =  {...dummyCollection};  
-      const r = await storeOrbimarketCollection(dummyCollection.contract,dummyCollection);
+  describe("testOrbimarket: oribimarket functions", () => {
 
-      //const r = await getRallyEvent01(docId);
-      assert(r != null);
-      //assert(r.start_time === test_rally_event_01.start_time);      
-      console.log(r);
+    it("test getCollectionDataForClowder", async () => {
 
+      const urlColl = "https://www.orbitmarket.io/nft/0xabbaa322a763b36587e3f63e46a81deacb2957a7/14404840189847758859272355737320615932652549548219367136158005517076650715578";
+      const orbiCollectionData = await getCollectionDataForClowder(urlColl, 5);
+      console.log(orbiCollectionData);
     }).timeout(5 * 60 * 1000);
+
+    it.only("test txnData", async () => {
+
+      const orbiNtf = "0xabbaa322a763b36587e3f63e46a81deacb2957a7";
+      const orbiCollectionData = await getTxnData(orbiNtf);
+      console.log(orbiCollectionData);
+    }).timeout(5 * 60 * 1000);
+
   });
 }
 
-const dummyCollection:OrbiMarketCollection = {
+const dummyCollection: OrbiMarketCollection = {
   name: "test name",
   contract: "test contract",
   description: "test description",

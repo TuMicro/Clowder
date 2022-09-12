@@ -19,7 +19,7 @@ export async function getOrbimarketCollection(id: string) {
   const r = s.data() as OrbiMarketCollection | undefined; // undefined when doc not found
   if (r != null) {
     return {
-      id: id,
+      docId: id,
       ...r,
     };
   }

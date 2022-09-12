@@ -3,11 +3,7 @@ import fetch from "node-fetch";
 import { TextDecoder } from "util";
 import { storeOrbimarketNFT, getOrbimarketCollection, storeOrbimarketCollection, addDataToOrbimarketCollection } from "../src/firestore-utils/orbimarket";
 import { OrbiMarketCollection, OrbiMarketNFT } from "../src/model/firestore/orbimarket";
-
-console.log("");
-// print current date and time
-console.log("Current date and time: " + new Date().toLocaleString());
-console.log("");
+import { BigNumber} from "ethers";
 
 const dummyCollection: OrbiMarketCollection = {
   name: "test name",
@@ -197,7 +193,7 @@ async function scrappingOrbiMarketCollectionsToFirebase() {
   return true;
 }
 
-async function getCollectionDataForClowder(url: string, minNfts: number) {
+export async function getCollectionDataForClowder(url: string, minNfts: number) {
 
   const indexFrom = url.indexOf("/0x") + 1;
   const collId = url.substring(indexFrom, indexFrom + 42);
@@ -223,7 +219,7 @@ async function getCollectionDataForClowder(url: string, minNfts: number) {
   let floorPrice = null;
 
   if (nfts != null && nfts.length !== 0) {
-    floorPrice = nfts[0].pricePerItem;    
+    floorPrice = nfts[0].pricePerItem;
 
     for (const nft of nfts) {
 
@@ -247,10 +243,25 @@ async function getCollectionDataForClowder(url: string, minNfts: number) {
   return { ...orbiCollection, nfts: nftsMergeds, floorPrice: floorPrice };
 }
 
-//const success = scrappingOrbiMarketCollectionsToFirebase();
-const urlColl = "https://www.orbitmarket.io/collection/0xe96cecc1c15ca7d80fb76ba74727a1c39e28b1db";
-const orbiCollectionData = getCollectionDataForClowder(urlColl, 5).then((data) => {
-  console.log("collectionData:", data);
-});
+export async function getTxnData(collectionId: string) {
+  const orbiNFT = await getOrbimarketCollection(collectionId);
+  let txnData = "0x85f9d345000000000000000000000000";
+  //check if orbiNFT?.contract is not null or not undefined
+  if (!orbiNFT?.contract) return null;
+
+  //check if orbiNFT!.nfts![0].owner is not null and not undefined
+  if (orbiNFT.nfts == null || orbiNFT.nfts.length === 0 || orbiNFT.nfts[0].owner == null ) return null;
+
+  txnData += orbiNFT.contract.substring(2); //substrings to remove "0x" prefix
+  const tokenIdHex = BigNumber.from(orbiNFT.nfts[0].tokenId)._hex;  
+  txnData += tokenIdHex.substring(2);
+  //one of theese two next lines is the pay token (EVMOS)
+  txnData += "0000000000000000000000000000000000000000";
+  txnData += "0000000000000000000000000000000000000000";  
+  txnData += "00000000"; // dont know what is this
+  txnData += orbiNFT.nfts[0].owner.substring(2);
+  
+  return txnData;
+}
 
 

@@ -9,8 +9,7 @@
   "scripts": {
     "genOrderHashes": "npx ts-node --files --project tsconfig.json test/ClowderMain/clowdersignature.script.ts",
     "scrapper": "npx ts-node --files --project tsconfig.json tasks/scrapper.ts",
-    "testScrapperOrbimarket": "mocha -g 'scrapperOrbimarket'",
-    "test": "mocha -g 'scrapperOrbimarket'"
+    "testOrbimarket": "mocha -g 'testOrbimarket'"
   },
   "devDependencies": {
     "@ethersproject/bytes": "^5.6.1",
@@ -51,6 +50,7 @@
   "dependencies": {
     "@ethersproject/abstract-signer": "^5.6.2",
     "@openzeppelin/contracts": "^4.6.0",
+    "express": "^4.18.1",
     "firebase-admin": "^11.0.1",
     "opensea-js": "^3.0.4",
     "web3": "^1.7.3",
