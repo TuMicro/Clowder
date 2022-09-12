@@ -11,9 +11,9 @@ import "hardhat-deploy";
 // tasks
 import "./tasks/execute_buy";
 import "./tasks/deployments";
-// import "./tasks/list_on_opensea";
+import "./tasks/list_on_opensea";
 import "./tasks/get_execution";
-// import "./tasks/list_on_looksrare";
+import "./tasks/list_on_looksrare";
 import "./tasks/buy_on_looksrare";
 
 const infuraApiKey: string | undefined = process.env.INFURA_API_KEY;
@@ -67,7 +67,7 @@ export function getChainRpcUrl(chain: keyof typeof chainIds): string {
   return jsonRpcUrl;
 }
 
-const forkForTesting: keyof typeof chainIds = 'arbitrum-mainnet';
+const forkForTesting: keyof typeof chainIds = 'rinkeby';
 const forkForVerification: keyof typeof chainIds = 'rinkeby';
 
 const verificationConfig = getVerificationConfig(forkForVerification);

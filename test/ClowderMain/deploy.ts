@@ -52,8 +52,8 @@ export async function deployForTests(): Promise<DeployOutputs> {
   const clowderMainFactory = await ethers.getContractFactory('ClowderMain', {
     libraries: {
       'BuyOrderV1Functions': buyOrderV1FunctionsLibrary.address,
-      // 'OpenSeaUtil': OpenSeaUtilLibrary.address,
-      // 'LooksRareUtil': LooksRareUtilLibrary.address,
+      'OpenSeaUtil': OpenSeaUtilLibrary.address,
+      'LooksRareUtil': LooksRareUtilLibrary.address,
     }
   });
   

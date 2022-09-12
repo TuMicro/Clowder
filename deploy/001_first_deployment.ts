@@ -11,20 +11,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment,) {
   const buyOrderV1FunctionsLibrary = await deploy("BuyOrderV1Functions", {
     from: deployer,
   });
-  // const OpenSeaUtilLibrary = await deploy("OpenSeaUtil", {
-  //   from: deployer,
-  // });
-  // const LooksRareUtilLibrary = await deploy("LooksRareUtil", {
-  //   from: deployer,
-  // });
+  const OpenSeaUtilLibrary = await deploy("OpenSeaUtil", {
+    from: deployer,
+  });
+  const LooksRareUtilLibrary = await deploy("LooksRareUtil", {
+    from: deployer,
+  });
 
   const clowderMain = await deploy("ClowderMain", {
     from: deployer,
     args: [WETH_ADDRESS[Number(chainId)], deployer],
     libraries: {
       "BuyOrderV1Functions": buyOrderV1FunctionsLibrary.address,
-      // "OpenSeaUtil": OpenSeaUtilLibrary.address,
-      // 'LooksRareUtil': LooksRareUtilLibrary.address,
+      "OpenSeaUtil": OpenSeaUtilLibrary.address,
+      'LooksRareUtil': LooksRareUtilLibrary.address,
     }
   });
 
