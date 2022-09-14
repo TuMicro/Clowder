@@ -5,6 +5,8 @@ import { splitSignature } from "ethers/lib/utils";
 import { SignatureUtils } from "../signature";
 import { BuyOrderV1, BuyOrderV1Basic } from "./model";
 
+const debug = false;
+
 export class ClowderSignature {
   static getDomain(chainId: number, verifyingContract: string): TypedDataDomain {
     return {
@@ -44,6 +46,14 @@ export class ClowderSignature {
     }
     const types = ClowderSignature.getBuyOrderV1Types();
     SignatureUtils.validateObjectAgaintsTypes(types, buyOrderV1Basic);
+    
+    if (debug) {
+      console.log("showing signature input sent to provider:");
+      console.log(JSON.stringify(domain));
+      console.log(JSON.stringify(types));
+      console.log(JSON.stringify(buyOrderV1Basic));
+    }
+
     const rawSignature = await signer._signTypedData(domain, types, buyOrderV1Basic);
     const signature = splitSignature(rawSignature);
     return {

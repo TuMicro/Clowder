@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "prod": "clowder-club",
+    "test": "clowder-club"
+  },
+  "targets": {}
+}
