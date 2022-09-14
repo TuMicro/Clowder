@@ -9,14 +9,25 @@ const enabled = true;
 if (enabled) {
   describe("testOrbimarket: oribimarket functions", () => {
 
-    it("test getCollectionDataForClowder", async () => {
+    it("test getCollectionDataForClowder invalid URL", async () => {
 
-      const urlColl = "https://www.orbitmarket.io/nft/0xabbaa322a763b36587e3f63e46a81deacb2957a7/14404840189847758859272355737320615932652549548219367136158005517076650715578";
+      const urlColl = "IVALID_URL";
       const orbiCollectionData = await getCollectionDataForClowder(urlColl, 5);
       console.log(orbiCollectionData);
+      assert(orbiCollectionData == null);
+      
     }).timeout(5 * 60 * 1000);
 
-    it.only("test txnData", async () => {
+    it("test getCollectionDataForClowder valid URL", async () => {
+
+      const urlColl = "https://www.orbitmarket.io/nft/0xb19da44293147ad2dd0ea3ded47949d2971a3818/155";
+      const orbiCollectionData = await getCollectionDataForClowder(urlColl, 5);
+      console.log(orbiCollectionData);
+      assert(orbiCollectionData != null);
+      
+    }).timeout(5 * 60 * 1000);
+
+    it("test txnData", async () => {
 
       const orbiNtf = "0xabbaa322a763b36587e3f63e46a81deacb2957a7";
       const orbiCollectionData = await getTxnData(orbiNtf);

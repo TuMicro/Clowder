@@ -3,7 +3,7 @@ import fetch from "node-fetch";
 import { TextDecoder } from "util";
 import { storeOrbimarketNFT, getOrbimarketCollection, storeOrbimarketCollection, addDataToOrbimarketCollection } from "../src/firestore-utils/orbimarket";
 import { OrbiMarketCollection, OrbiMarketNFT } from "../src/model/firestore/orbimarket";
-import { BigNumber} from "ethers";
+import { BigNumber } from "ethers";
 
 const dummyCollection: OrbiMarketCollection = {
   name: "test name",
@@ -195,9 +195,14 @@ async function scrappingOrbiMarketCollectionsToFirebase() {
 
 export async function getCollectionDataForClowder(url: string, minNfts: number) {
 
-  const indexFrom = url.indexOf("/0x") + 1;
+  const idxStart = url.indexOf("/0x");
+
+  const indexFrom = idxStart + 1;
   const collId = url.substring(indexFrom, indexFrom + 42);
   console.log("collectionId: ", collId);
+
+  //check if collId is and NFT address
+  if (idxStart === -1 || collId.length !== 42) return null;
 
   let orbiCollection = await getOrbimarketCollection(collId);
   console.log("orbiCollection name: ", orbiCollection?.name);
@@ -250,17 +255,17 @@ export async function getTxnData(collectionId: string) {
   if (!orbiNFT?.contract) return null;
 
   //check if orbiNFT!.nfts![0].owner is not null and not undefined
-  if (orbiNFT.nfts == null || orbiNFT.nfts.length === 0 || orbiNFT.nfts[0].owner == null ) return null;
+  if (orbiNFT.nfts == null || orbiNFT.nfts.length === 0 || orbiNFT.nfts[0].owner == null) return null;
 
   txnData += orbiNFT.contract.substring(2); //substrings to remove "0x" prefix
-  const tokenIdHex = BigNumber.from(orbiNFT.nfts[0].tokenId)._hex;  
+  const tokenIdHex = BigNumber.from(orbiNFT.nfts[0].tokenId)._hex;
   txnData += tokenIdHex.substring(2);
   //one of theese two next lines is the pay token (EVMOS)
   txnData += "0000000000000000000000000000000000000000";
-  txnData += "0000000000000000000000000000000000000000";  
+  txnData += "0000000000000000000000000000000000000000";
   txnData += "00000000"; // dont know what is this
   txnData += orbiNFT.nfts[0].owner.substring(2);
-  
+
   return txnData;
 }
 
