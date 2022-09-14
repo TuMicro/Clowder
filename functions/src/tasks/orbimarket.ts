@@ -1,9 +1,7 @@
-import { task } from "hardhat/config";
 import fetch from "node-fetch";
-import { TextDecoder } from "util";
-import { storeOrbimarketNFT, getOrbimarketCollection, storeOrbimarketCollection, addDataToOrbimarketCollection } from "../src/firestore-utils/orbimarket";
-import { OrbiMarketCollection, OrbiMarketNFT } from "../src/model/firestore/orbimarket";
 import { BigNumber} from "ethers";
+import { getOrbimarketCollection, storeOrbimarketCollection, addDataToOrbimarketCollection, storeOrbimarketNFT } from "../firestore-utils/orbimarket";
+import { OrbiMarketCollection, OrbiMarketNFT } from "../model/firestore/orbimarket";
 
 const dummyCollection: OrbiMarketCollection = {
   name: "test name",

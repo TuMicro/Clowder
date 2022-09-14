@@ -1,6 +1,5 @@
 import assert from "assert";
-import { storeOrbimarketCollection } from "../src/firestore-utils/orbimarket";
-import { OrbiMarketCollection } from "../src/model/firestore/orbimarket";
+import { OrbiMarketCollection } from "../model/firestore/orbimarket";
 import { getCollectionDataForClowder, getTxnData } from "./orbimarket";
 
 
