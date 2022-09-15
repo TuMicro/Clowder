@@ -9,8 +9,74 @@ import { formatEther } from "ethers/lib/utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "hardhat";
 
+export async function prepareForSingleBuySellTest(deployOutputs: DeployOutputs) {
+  const { clowderMain, thirdParty, eip712Domain, feeFraction,
+    testERC721, testERC721Holder, wethTokenContract, wethHolder } = deployOutputs;
+
+  const executionId = BigNumber.from(0);
+  const executionPrice = ETHER.mul(10);
+  const protocolFee = executionPrice.mul(feeFraction).div(10_000);
+  const price = executionPrice.add(protocolFee);
+
+
+  const contribution = price;
+
+  // getting the WETH
+  await wethTokenContract.connect(thirdParty).deposit({
+    value: contribution
+  });
+
+  const buyPrice = ETHER.mul(40);
+  const buyOrder = {
+    signer: thirdParty.address,
+    collection: testERC721.address,
+    executionId,
+    contribution,
+
+    buyPrice,
+    buyNonce: BigNumber.from(0),
+    buyPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
+
+    sellPrice: ETHER.mul(30),
+    sellPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
+    sellNonce: BigNumber.from(0),
+  };
+  const buyOrderSigned = await ClowderSignature.signBuyOrder(buyOrder,
+    eip712Domain,
+    thirdParty
+  );
+
+  // approve the clowder contract to spend thirdParty's WETH
+  await wethTokenContract.connect(thirdParty).approve(
+    clowderMain.address,
+    MAX_UINT256
+  );
+
+  // approve the clowder contract to move nft holder's nfts
+  await testERC721.connect(testERC721Holder).setApprovalForAll(
+    clowderMain.address,
+    true,
+  );
+
+  // approve the clowder contract to spend wethHolder's WETH
+  await wethTokenContract.connect(wethHolder).approve(
+    clowderMain.address,
+    MAX_UINT256
+  );
+
+  return {
+    buyOrder,
+    buyOrderSigned,
+    executionPrice,
+    protocolFee,
+    price,
+    executionId,
+  }
+}
+
 describe.only("Execution functions", () => {
   let deployOutputs: DeployOutputs;
+
   let buyOrder: BuyOrderV1Basic;
   let buyOrderSigned: BuyOrderV1;
 
@@ -18,62 +84,19 @@ describe.only("Execution functions", () => {
   let executionPrice: BigNumber;
   let protocolFee: BigNumber;
   let price: BigNumber;
-  const executionId = BigNumber.from(0);
+  let executionId: BigNumber;
 
   beforeEach(async () => {
     deployOutputs = await deployForTests();
-    const { clowderMain, thirdParty, eip712Domain, feeFraction,
-      testERC721, testERC721Holder, wethTokenContract, wethHolder } = deployOutputs;
 
-    executionPrice = ETHER.mul(10);
-    protocolFee = executionPrice.mul(feeFraction).div(10_000);
-    price = executionPrice.add(protocolFee);
+    const res = await prepareForSingleBuySellTest(deployOutputs);
+    buyOrder = res.buyOrder;
+    buyOrderSigned = res.buyOrderSigned;
+    executionPrice = res.executionPrice;
+    protocolFee = res.protocolFee;
+    price = res.price;
+    executionId = res.executionId;
 
-
-    const contribution = price;
-
-    // getting the WETH
-    await wethTokenContract.connect(thirdParty).deposit({
-      value: contribution
-    });
-
-    const buyPrice = ETHER.mul(40);
-    buyOrder = {
-      signer: thirdParty.address,
-      collection: testERC721.address,
-      executionId,
-      contribution,
-
-      buyPrice,
-      buyNonce: BigNumber.from(0),
-      buyPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
-
-      sellPrice: ETHER.mul(30),
-      sellPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
-      sellNonce: BigNumber.from(0),
-    };
-    buyOrderSigned = await ClowderSignature.signBuyOrder(buyOrder,
-      eip712Domain,
-      thirdParty
-    );
-
-    // approve the clowder contract to spend thirdParty's WETH
-    await wethTokenContract.connect(thirdParty).approve(
-      clowderMain.address,
-      MAX_UINT256
-    );
-
-    // approve the clowder contract to move nft holder's nfts
-    await testERC721.connect(testERC721Holder).setApprovalForAll(
-      clowderMain.address,
-      true,
-    );
-
-    // approve the clowder contract to spend wethHolder's WETH
-    await wethTokenContract.connect(wethHolder).approve(
-      clowderMain.address,
-      MAX_UINT256
-    );
   });
 
   it("Must respect the order buyPrice", async () => {
@@ -376,10 +399,10 @@ describe.only("Execution functions", () => {
   }).timeout(2 * 60 * 1000);
 
   it("Must return snow access key", async () => {
-      const { clowderMain } = await deployForTests();
-      const addr = '0x606be0248B77c89Cd44dfEA0EA895EA42e25748D';
-      const snowAccessKey = await clowderMain.getSnowAccessKey(addr);
-      console.log("snowAccessKey");
-      console.log(snowAccessKey);
+    const { clowderMain } = await deployForTests();
+    const addr = '0x606be0248B77c89Cd44dfEA0EA895EA42e25748D';
+    const snowAccessKey = await clowderMain.getSnowAccessKey(addr);
+    console.log("snowAccessKey");
+    console.log(snowAccessKey);
   }).timeout(2 * 60 * 1000);
 })
