@@ -30,7 +30,7 @@ export interface OrbiMarketNFT {
   payToken: string,
   lastSalePayToken: string,
   description?: string | null,
-  image?: string | null,
+  image?: string | null, //https://nftstorage.link/{image}
   dna?: string | null,
   edition?: number | null,
   date?: number | null,

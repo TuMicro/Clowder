@@ -1,14 +1,9 @@
 import fetch from "node-fetch";
-<<<<<<< HEAD:tasks/orbimarket.ts
-import { TextDecoder } from "util";
-import { storeOrbimarketNFT, getOrbimarketCollection, storeOrbimarketCollection, addDataToOrbimarketCollection } from "../src/firestore-utils/orbimarket";
-import { OrbiMarketCollection, OrbiMarketNFT } from "../src/model/firestore/orbimarket";
-import { BigNumber } from "ethers";
-=======
+
 import { BigNumber} from "ethers";
 import { getOrbimarketCollection, storeOrbimarketCollection, addDataToOrbimarketCollection, storeOrbimarketNFT } from "../firestore-utils/orbimarket";
 import { OrbiMarketCollection, OrbiMarketNFT } from "../model/firestore/orbimarket";
->>>>>>> 9159d94a499b5419da1466c47f8960905db1dbb2:functions/src/tasks/orbimarket.ts
+
 
 const dummyCollection: OrbiMarketCollection = {
   name: "test name",
@@ -238,11 +233,13 @@ export async function getCollectionDataForClowder(url: string, minNfts: number) 
       //merge nft and nftExtraData
       const nftMerged = { ...nft, ...nftExtraData };
       //console.log("nftMerged: ", nftMerged);
-
+      nftMerged.image = "https://nftstorage.link/"+nftMerged.image
       await storeOrbimarketNFT(nftMerged.id, nftMerged);
       console.log("nft stored: " + nftMerged.id);
 
       nftsMergeds.push(nftMerged);
+
+
     }
   }
 

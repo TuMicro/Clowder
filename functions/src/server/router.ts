@@ -1,5 +1,6 @@
 import express from "express";
 import { Response } from "express-serve-static-core";
+import { GetOrbimarketCollectionRequest } from "../model/server/orbimarket";
 import { getCollectionDataForClowder } from "../tasks/orbimarket";
 import { isTesting } from "../util/devEnv";
 import { getFirebaseAuthMiddleware } from "./util/express-firebase-middleware";
@@ -14,15 +15,15 @@ export const routerV2 = express
 
   //.get('/p/admin/dashboard/users', userHandlers.getDashboardUsers)
 
-  .post('/po/orbimarket/getFloorPrice', async function (req, res) {
-
-    const url = String(req.body.url);
+  .post('/po/orbimarket/getOrbimarketCollectionFromURL', async function (req, res) {
+    const getOrbiMarketCollectionRequest = req.body as GetOrbimarketCollectionRequest;
+    //const url = String(req.body.url); 
 
 
     try {
 
       // validating event data
-      const orbiCollectionData = await getCollectionDataForClowder(url, 5);
+      const orbiCollectionData = await getCollectionDataForClowder(getOrbiMarketCollectionRequest.url, getOrbiMarketCollectionRequest.num_nfts);
 
       logAndAnswer(res, {
         status: "OK",
