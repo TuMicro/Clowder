@@ -91,19 +91,6 @@ npx hardhat buy_on_looksrare --network rinkeby
 
 ```
 
-## Cloud Functions Production Deployment
-
-First install firebase CLI utility in your machine and login. 
-
-```
-firebase use prod
-# more info: https://firebase.google.com/docs/functions/config-env#env-variables
-cd functions
-npm i
-firebase deploy --only functions && time /t
-
-```
-
 ## Utils
 
 Showing the commits tree:
