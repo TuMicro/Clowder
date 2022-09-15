@@ -131,7 +131,7 @@ describe.only("Execution functions", () => {
     )).to.be.revertedWith("Order nonce is unusable");
   });
 
-  it("Must transfer the NFT and required amounts. Must be able to sell", async () => {
+  it("Must execute a buy order transferring the NFT and required amounts. Must be able to sell", async () => {
     const { clowderMain, feeReceiver, owner,
       testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
       wethHolder, eip712Domain, thirdParty } = deployOutputs;
@@ -272,7 +272,7 @@ describe.only("Execution functions", () => {
 
   });
 
-  it("Must allow multiple buyers to claim the NFT", async () => {
+  it("Must allow groups of people to buy one NFT and sell it", async () => {
     for (let n_buyers = 1; n_buyers <= 10; n_buyers++) {
       const { clowderMain, feeFraction,
         testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
@@ -337,7 +337,7 @@ describe.only("Execution functions", () => {
         return await clowderMain.realContributions(signer.address, orders[0].executionId);
       }));
 
-      // asserting fees and consensus
+      // asserting sell fees and consensus parameters
       const protocolSellingFeeFraction = BigNumber.from(0);
       await clowderMain.connect(owner).changeProtocolFeeFractionFromSelling(protocolSellingFeeFraction);
       const minConsensusForSellingOverBuyPrice = BigNumber.from(5_000);
