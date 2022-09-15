@@ -83,6 +83,26 @@ contract ClowderMainOwnable is Ownable {
     ) external onlyOwner {
         minConsensusForSellingUnderOrEqualBuyPrice = _minConsensusForSellingUnderOrEqualBuyPrice;
     }
+
+    /**
+     * @notice [onlyOwner] Allow the owner to withdraw any NFT owned by the contract.
+     * Will be used to delegate management of groupally owned NFTs to other contracts.
+     * @param _to address to send the NFT to
+     * @param _nftCollection address of the NFT collection
+     * @param _tokenId ID of the NFT
+     */
+    function transferNft(
+        address _to,
+        address _nftCollection,
+        uint256 _tokenId
+    ) external onlyOwner {
+        NftCollectionFunctions.transferNft(
+            _nftCollection,
+            address(this),
+            _to,
+            _tokenId
+        );
+    }
 }
 
 contract ClowderMain is
@@ -137,7 +157,7 @@ contract ClowderMain is
 
         for (uint256 i = 0; i < buyOrderNonces.length; i++) {
             // if (!isUsedBuyNonce[msg.sender][buyOrderNonces[i]]) {
-                isUsedBuyNonce[msg.sender][buyOrderNonces[i]] = true; // used
+            isUsedBuyNonce[msg.sender][buyOrderNonces[i]] = true; // used
             // }
         }
     }
@@ -353,7 +373,7 @@ contract ClowderMain is
 
         // TODO: should we do this?:
         // require(clowder is new owner of tokenId in collection, according to collection of course);
-        // hmm, but, if the collection contract said transfer was successful, then 
+        // hmm, but, if the collection contract said transfer was successful, then
         // it could also lie in here when asking for the new owner of the tokenId
     }
 
@@ -512,8 +532,8 @@ contract ClowderMain is
         {
             // LooksRare listing
             (
-                bytes32 _hash,
-                // LooksRareUtil.MakerOrder memory order
+                bytes32 _hash, // LooksRareUtil.MakerOrder memory order
+
             ) = LooksRareUtil.buildAndGetMarketplaceOrderHash(
                     address(this),
                     execution.collection,
