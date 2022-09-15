@@ -233,7 +233,7 @@ export async function getCollectionDataForClowder(url: string, minNfts: number) 
       //merge nft and nftExtraData
       const nftMerged = { ...nft, ...nftExtraData };
       //console.log("nftMerged: ", nftMerged);
-      nftMerged.image = "https://nftstorage.link/"+nftMerged.image
+      nftMerged.image = "https://nftstorage.link/ipfs/"+(nftMerged.image?.replace("ipfs://", "") ?? "");
       await storeOrbimarketNFT(nftMerged.id, nftMerged);
       console.log("nft stored: " + nftMerged.id);
 
