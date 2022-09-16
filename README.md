@@ -26,7 +26,7 @@ npx hardhat --network hardhat deploy --report-gas
 ```
 
 Live networks:
-Make sure to change the addresses (mainnet vs rinkeby) in externalmarketplaces libraries:
+Make sure to change the addresses (mainnet vs rinkeby) in externalmarketplaces libraries in case including them in the deployment.
 ```
 npx hardhat --network rinkeby deploy
 

@@ -16,10 +16,8 @@ import "./tasks/get_execution";
 import "./tasks/list_on_looksrare";
 import "./tasks/buy_on_looksrare";
 
+
 const infuraApiKey: string | undefined = process.env.INFURA_API_KEY;
-if (!infuraApiKey) {
-  throw new Error("Please set your INFURA_API_KEY in a .env file");
-}
 
 export const chainIds = {
   "arbitrum-mainnet": 42161,
@@ -31,21 +29,22 @@ export const chainIds = {
   "polygon-mainnet": 137,
   "polygon-mumbai": 80001,
   rinkeby: 4,
+  evmos: 9001,
 };
 
 export function getVerificationConfig(chain: keyof typeof chainIds): null | {
-  apiKey : string,
+  apiKey: string,
   apiBaseUrl: string,
 } {
   if (chain === "rinkeby") {
     return {
-      apiKey : process.env.ETHERSCAN_API_KEY ?? "",
+      apiKey: process.env.ETHERSCAN_API_KEY ?? "",
       apiBaseUrl: "https://api-rinkeby.etherscan.io",
     }
   }
   if (chain === "mainnet") {
     return {
-      apiKey : process.env.ETHERSCAN_API_KEY ?? "",
+      apiKey: process.env.ETHERSCAN_API_KEY ?? "",
       apiBaseUrl: "https://api.etherscan.io",
     }
   }
@@ -61,7 +60,13 @@ export function getChainRpcUrl(chain: keyof typeof chainIds): string {
     case "bsc":
       jsonRpcUrl = "https://bsc-dataseed1.binance.org";
       break;
+    case "evmos":
+      jsonRpcUrl = "https://eth.bd.evmos.org:8545";
+      break;
     default:
+      if (!infuraApiKey) {
+        throw new Error("Please set INFURA_API_KEY in your env vars or set a jsonRpcUrl in hardhat.config.ts");
+      }
       jsonRpcUrl = "https://" + chain + ".infura.io/v3/" + infuraApiKey;
   }
   return jsonRpcUrl;
@@ -108,6 +113,10 @@ const config: HardhatUserConfig = {
     arbitrum: {
       url: getChainRpcUrl('arbitrum-mainnet'),
       accounts: [process.env.PK_RINKEBY_DEPLOYER ?? ""],
+    },
+    evmos: {
+      url: getChainRpcUrl('evmos'),
+      accounts: [process.env.PK_RINKEBY_DEPLOYER ?? ""],
     }
   },
   // hardhat-deploy config:
@@ -125,8 +134,8 @@ const config: HardhatUserConfig = {
     externalArtifacts: ['./external_abis/**/*.json'],
   },
 
-  verify : {
-    etherscan : verificationConfig,
+  verify: {
+    etherscan: verificationConfig,
   }
 };
 
