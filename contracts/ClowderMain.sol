@@ -208,6 +208,11 @@ contract ClowderMain is
         uint256 protocolFeeTransferred = 0;
         uint256 executorPriceTransferred = 0;
 
+        // TODO: maybe group contributions by signer
+        // so that we save gas by doing only one or two transfers per signer
+        // Possibly recieve the data grouped from outside blockchain to 
+        // save gas on the grouping.
+
         // validate and process all the buy orders
         for (uint256 i = 0; i < buyOrders.length; i++) {
             BuyOrderV1 calldata order = buyOrders[i];
