@@ -32,6 +32,8 @@ npx hardhat --network rinkeby deploy
 
 npx hardhat --network optimism deploy
 
+npx hardhat --network evmos deploy
+
 # note that gas is very different in arbitrum
 # so be careful, and I mean gas units
 npx hardhat --network arbitrum deploy
