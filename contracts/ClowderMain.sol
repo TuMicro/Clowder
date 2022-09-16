@@ -102,6 +102,11 @@ contract ClowderMainOwnable is Ownable {
             _to,
             _tokenId
         );
+        // TODO: maybe mark the execution as sold so
+        // in case it is bought again by another execution
+        // the old owners can't approve/execute sell orders over the NFT.
+        // Although we probably will separate/remove any 
+        // post-buy handling mechanism from this contract.
     }
 }
 
