@@ -66,6 +66,9 @@ npx hardhat deployments --network rinkeby
 npx hardhat get_execution --execution 0 --network rinkeby
 # flatten solidity
 npx hardhat flatten > flattened.sol
+
+# delegate the NFT
+npx hardhat delegate_nft --execution 0x3a417f5fb5b3527afd4488c2656e088ff9fd4298cdfa381f0db19f7bfb3864eb --destination 0xDDc40255d888Df0d43C2ebc7a809F9221B493339 --network evmos
 ```
 
 ### About the custom hardhat tasks implemented
