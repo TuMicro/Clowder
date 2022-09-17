@@ -343,6 +343,7 @@ describe.only("Execution functions", () => {
         return orderSigned;
       }));
 
+      // when reviewing this code I don't understand why I added 1 here on the first place
       const buyExecutionPrice = orderBuyPrice.mul(10_000).div(feeFraction.add(10_000)).add(1);
       const actualPricePaidByBuyers = buyExecutionPrice.mul(feeFraction.add(10_000)).div(10_000);
 
