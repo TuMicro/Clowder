@@ -16,6 +16,7 @@ import "./tasks/get_execution";
 import "./tasks/list_on_looksrare";
 import "./tasks/buy_on_looksrare";
 import "./tasks/delegate_nft";
+import "./tasks/change_protocol_fee_fraction";
 
 
 const infuraApiKey: string | undefined = process.env.INFURA_API_KEY;

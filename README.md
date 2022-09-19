@@ -69,6 +69,10 @@ npx hardhat flatten > flattened.sol
 
 # delegate the NFT
 npx hardhat delegate_nft --execution 0xb0b6ec61a3a7aa38a57a5e36947c79ad4a1c950d7a240351dd5f556f1eada3e8 --destination 0xDDc40255d888Df0d43C2ebc7a809F9221B493339 --network evmos
+
+# change the protocol fee fraction
+npx hardhat change_protocol_fee_fraction --feefraction 0 --network evmos
+
 ```
 
 ### About the custom hardhat tasks implemented
