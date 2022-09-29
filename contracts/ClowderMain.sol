@@ -571,6 +571,10 @@ contract ClowderMain is
     //     }
     // }
 
+    // TODO: invalidate signature once detected it was used by a marketplace
+    // to prevent reusing it.
+    // Although we probably will separate/remove any 
+    // post-buy handling mechanism from this contract.
     function isValidSignature(bytes32 _hash, bytes calldata _signature)
         external
         view
