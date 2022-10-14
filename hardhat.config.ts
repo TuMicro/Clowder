@@ -32,6 +32,7 @@ export const chainIds = {
   "polygon-mumbai": 80001,
   rinkeby: 4,
   evmos: 9001,
+  goerli: 5,
 };
 
 export function getVerificationConfig(chain: keyof typeof chainIds): null | {
@@ -74,7 +75,7 @@ export function getChainRpcUrl(chain: keyof typeof chainIds): string {
   return jsonRpcUrl;
 }
 
-const forkForTesting: keyof typeof chainIds = 'rinkeby';
+const forkForTesting: keyof typeof chainIds = 'goerli';
 const forkForVerification: keyof typeof chainIds = 'rinkeby';
 
 const verificationConfig = getVerificationConfig(forkForVerification);
