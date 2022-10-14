@@ -109,6 +109,10 @@ const config: HardhatUserConfig = {
       url: getChainRpcUrl('rinkeby'),
       accounts: [process.env.PK_RINKEBY_DEPLOYER ?? ""],
     },
+    goerli: {
+      url: getChainRpcUrl('goerli'),
+      accounts: [process.env.PK_RINKEBY_DEPLOYER ?? ""],
+    },
     optimism: {
       url: getChainRpcUrl('optimism-mainnet'),
       accounts: [process.env.PK_RINKEBY_DEPLOYER ?? ""],
@@ -129,7 +133,6 @@ const config: HardhatUserConfig = {
       1: 0, // similarly on mainnet it will take the first account as deployer. Note though that depending on how hardhat network are configured, the account 0 on one network can be different than on another
       4: '0xC103d1b071AFA925714eE55b2F4869300C4331C4', // but for rinkeby it will be a specific address, also for any chain with this id
       10: '0xC103d1b071AFA925714eE55b2F4869300C4331C4', // optimism deployer
-      "goerli": '0x84b9514E013710b9dD0811c9Fe46b837a4A0d8E0', //it can also specify a specific netwotk name (specified in hardhat.config.js)
     },
   },
 

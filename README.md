@@ -20,9 +20,9 @@ Base command:
 npx hardhat --network <networkName> deploy [options and flags]
 ```
 
-Use this first for testing:
+Use this first for testing, it will run only a simulation not a real deployment:
 ```
-npx hardhat --network hardhat deploy --report-gas
+npx hardhat --network goerli deploy --report-gas
 ```
 
 Live networks:
