@@ -399,11 +399,12 @@ describe.only("Execution functions", () => {
     }
   }).timeout(2 * 60 * 1000);
 
-  it("Must return snow access key", async () => {
-    const { clowderMain } = await deployForTests();
-    const addr = '0x606be0248B77c89Cd44dfEA0EA895EA42e25748D';
-    const snowAccessKey = await clowderMain.getSnowAccessKey(addr);
-    console.log("snowAccessKey");
-    console.log(snowAccessKey);
-  }).timeout(2 * 60 * 1000);
+  // it("Must return snow access key", async () => {
+  //   const { clowderMain } = await deployForTests();
+  //   const addr = '0x606be0248B77c89Cd44dfEA0EA895EA42e25748D';
+  //   const snowAccessKey = await clowderMain.getSnowAccessKey(addr);
+  //   console.log("snowAccessKey");
+  //   console.log(snowAccessKey);
+  // }).timeout(2 * 60 * 1000);
+
 })
