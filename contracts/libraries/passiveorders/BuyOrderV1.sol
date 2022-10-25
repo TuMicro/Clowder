@@ -165,13 +165,23 @@ library BuyOrderV1Functions {
 
         // Validating price consensus
         if (price > execution.buyPrice) {
-            // we need at least N out of 10_000 consensus
-            require(
-                realContributionOnBoard * 10_000 >=
-                    execution.buyPrice *
-                        minConsensusForSellingOverBuyPrice,
-                "Selling over or equal buyPrice: consensus not reached"
-            );
+
+            if (minConsensusForSellingOverBuyPrice == 10_000) {
+                // we need 10_000 out of 10_000 consensus
+                require(
+                    realContributionOnBoard == execution.buyPrice,
+                    "Selling over or equal buyPrice: consensus not reached"
+                );
+            } else {
+                // we need more than N out of 10_000 consensus
+                require(
+                    realContributionOnBoard * 10_000 >
+                        execution.buyPrice *
+                            minConsensusForSellingOverBuyPrice,
+                    "Selling over or equal buyPrice: consensus not reached"
+                );
+            }
+            
         } else {
             // we need a different consensus ratio
             require(
