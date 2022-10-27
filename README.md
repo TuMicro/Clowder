@@ -38,6 +38,8 @@ npx hardhat --network evmos deploy
 # so be careful, and I mean gas units
 npx hardhat --network arbitrum deploy
 
+npx hardhat --network goerli deploy
+
 ```
 
 Logs:
