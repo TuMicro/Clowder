@@ -24,10 +24,8 @@ struct BuyOrderV1 {
     uint256 buyPriceEndTime; // order expiration time (set 0 for omitting)
     uint256 buyNonce; // for differentiating orders (it is not possible to re-use the nonce)
 
-    // sell order parameters
-    uint256 sellPrice; // sell WETH price 
-    uint256 sellPriceEndTime; // sell order expiration time (set 0 for omitting)
-    uint256 sellNonce;
+    // delegate
+    address delegate;
 
     // signature parameters
     uint8 v;
@@ -57,19 +55,13 @@ library BuyOrderV1Functions {
                     passiveOrder.buyPrice,
                     passiveOrder.buyPriceEndTime,
                     passiveOrder.buyNonce,
-                    passiveOrder.sellPrice,
-                    passiveOrder.sellPriceEndTime,
-                    passiveOrder.sellNonce
+                    passiveOrder.delegate
                 )
             );
     }
 
     function canAcceptBuyPrice(BuyOrderV1 memory passiveOrder, uint256 price) internal pure returns (bool) {
         return passiveOrder.buyPrice >= price;
-    }
-    
-    function canAcceptSellPrice(BuyOrderV1 memory passiveOrder, uint256 price) internal pure returns (bool) {
-        return passiveOrder.sellPrice <= price;
     }
 
     
@@ -97,100 +89,5 @@ library BuyOrderV1Functions {
                 "Signature: Invalid"
             );
         }
-    }
-
-    function validateSellOrdersParameters(
-        mapping(address => mapping(uint256 => bool)) storage _isUsedSellNonce,
-        mapping(address => mapping(uint256 => uint256)) storage _realContributions,
-        BuyOrderV1[] calldata orders,
-        uint256 executionId,
-        Execution storage execution,
-        uint256 price,
-        uint256 minConsensusForSellingOverBuyPrice,
-        uint256 minConsensusForSellingUnderOrEqualBuyPrice
-    ) public view returns (uint256) {
-        // mapping(address => mapping(uint256 => bool))
-        //     storage _isUsedSellNonce = isUsedSellNonce;
-        // mapping(address => mapping(uint256 => uint256))
-        //     storage _realContributions = realContributions;
-        // Execution storage execution = executions[executionId];
-
-        uint256 minExpirationTime = type(uint256).max;
-        uint256 realContributionOnBoard = 0;
-        // Validate orders parameters, no need to access state
-        for (uint256 i = 0; i < orders.length; i++) {
-            BuyOrderV1 calldata order = orders[i];
-
-            // Validate the order is not expired
-            require(order.sellPriceEndTime >= block.timestamp, "Order expired");
-            // Validate collection
-            require(
-                order.collection == execution.collection,
-                "Order collection mismatch"
-            );
-            // Validate executionId
-            require(
-                order.executionId == executionId,
-                "Order executionId mismatch"
-            );
-            // Validating that the signer has not voted yet
-            for (uint256 j = 0; j < i; j++) {
-                if (orders[j].signer == order.signer) {
-                    require(false, "Signer already voted");
-                }
-            }
-            // Validating price acceptance
-            require(
-                canAcceptSellPrice(order, price),
-                "Order can't accept price"
-            );
-            // updating the min expiration time
-            minExpirationTime = Math.min(
-                minExpirationTime,
-                order.sellPriceEndTime
-            );
-
-            /* State required for tne following lines */
-
-            // Validate order nonce usability
-            require(
-                !_isUsedSellNonce[order.signer][order.sellNonce],
-                "Order nonce is unusable"
-            );
-            // counting the "votes" in favor of this price
-            realContributionOnBoard += _realContributions[order.signer][
-                executionId
-            ];
-        } // ends the voters for loop
-
-        // Validating price consensus
-        if (price > execution.buyPrice) {
-
-            if (minConsensusForSellingOverBuyPrice == 10_000) {
-                // we need 10_000 out of 10_000 consensus
-                require(
-                    realContributionOnBoard == execution.buyPrice,
-                    "Selling over or equal buyPrice: consensus not reached"
-                );
-            } else {
-                // we need more than N out of 10_000 consensus
-                require(
-                    realContributionOnBoard * 10_000 >
-                        execution.buyPrice *
-                            minConsensusForSellingOverBuyPrice,
-                    "Selling over or equal buyPrice: consensus not reached"
-                );
-            }
-            
-        } else {
-            // we need a different consensus ratio
-            require(
-                realContributionOnBoard * 10_000 >=
-                    execution.buyPrice * minConsensusForSellingUnderOrEqualBuyPrice,
-                "Selling under buyPrice: consensus not reached"
-            );
-        }
-
-        return minExpirationTime;
     }
 }

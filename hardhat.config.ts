@@ -9,14 +9,14 @@ import "hardhat-gas-reporter";
 import "hardhat-deploy";
 
 // tasks
-import "./tasks/execute_buy";
-import "./tasks/deployments";
-import "./tasks/list_on_opensea";
-import "./tasks/get_execution";
-import "./tasks/list_on_looksrare";
-import "./tasks/buy_on_looksrare";
-import "./tasks/delegate_nft";
-import "./tasks/change_protocol_fee_fraction";
+// import "./tasks/execute_buy";
+// import "./tasks/deployments";
+// import "./tasks/list_on_opensea";
+// import "./tasks/get_execution";
+// import "./tasks/list_on_looksrare";
+// import "./tasks/buy_on_looksrare";
+// import "./tasks/delegate_nft";
+// import "./tasks/change_protocol_fee_fraction";
 
 
 const infuraApiKey: string | undefined = process.env.INFURA_API_KEY;
