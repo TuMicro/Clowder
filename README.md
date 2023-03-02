@@ -22,21 +22,25 @@ Base command:
 npx hardhat --network <networkName> deploy [options and flags]
 ```
 
-Use this first for testing:
+Use this first for testing, it will run only a simulation not a real deployment:
 ```
-npx hardhat --network hardhat deploy --report-gas
+npx hardhat --network goerli deploy --report-gas
 ```
 
 Live networks:
-Make sure to change the addresses (mainnet vs rinkeby) in externalmarketplaces libraries:
+Make sure to change the addresses (mainnet vs rinkeby) in externalmarketplaces libraries in case including them in the deployment.
 ```
 npx hardhat --network rinkeby deploy
 
 npx hardhat --network optimism deploy
 
+npx hardhat --network evmos deploy
+
 # note that gas is very different in arbitrum
 # so be careful, and I mean gas units
 npx hardhat --network arbitrum deploy
+
+npx hardhat --network goerli deploy
 
 ```
 
@@ -66,6 +70,13 @@ npx hardhat deployments --network rinkeby
 npx hardhat get_execution --execution 0 --network rinkeby
 # flatten solidity
 npx hardhat flatten > flattened.sol
+
+# delegate the NFT
+npx hardhat delegate_nft --execution 0xb0b6ec61a3a7aa38a57a5e36947c79ad4a1c950d7a240351dd5f556f1eada3e8 --destination 0xDDc40255d888Df0d43C2ebc7a809F9221B493339 --network evmos
+
+# change the protocol fee fraction
+npx hardhat change_protocol_fee_fraction --feefraction 0 --network evmos
+
 ```
 
 ### About the custom hardhat tasks implemented

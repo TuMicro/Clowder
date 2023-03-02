@@ -21,8 +21,8 @@ import {BuyOrderV1, BuyOrderV1Functions} from "./libraries/passiveorders/BuyOrde
 import {Execution} from "./libraries/execution/Execution.sol";
 import {SafeERC20Transfer} from "./libraries/assettransfer/SafeERC20Transfer.sol";
 import {SignatureUtil} from "./libraries/SignatureUtil.sol";
-import {OpenSeaUtil} from "./libraries/externalmarketplaces/OpenSeaUtil.sol";
-import {LooksRareUtil} from "./libraries/externalmarketplaces/LooksRareUtil.sol";
+// import {OpenSeaUtil} from "./libraries/externalmarketplaces/OpenSeaUtil.sol";
+// import {LooksRareUtil} from "./libraries/externalmarketplaces/LooksRareUtil.sol";
 import {NftCollectionFunctions} from "./libraries/NftCollection.sol";
 
 contract ClowderMainOwnable is Ownable {
@@ -83,6 +83,31 @@ contract ClowderMainOwnable is Ownable {
     ) external onlyOwner {
         minConsensusForSellingUnderOrEqualBuyPrice = _minConsensusForSellingUnderOrEqualBuyPrice;
     }
+
+    /**
+     * @notice [onlyOwner] Allow the owner to withdraw any NFT owned by the contract.
+     * Will be used to delegate management of groupally owned NFTs to other contracts.
+     * @param _to address to send the NFT to
+     * @param _nftCollection address of the NFT collection
+     * @param _tokenId ID of the NFT
+     */
+    function transferNft(
+        address _to,
+        address _nftCollection,
+        uint256 _tokenId
+    ) external onlyOwner {
+        NftCollectionFunctions.transferNft(
+            _nftCollection,
+            address(this),
+            _to,
+            _tokenId
+        );
+        // TODO: maybe mark the execution as sold so
+        // in case it is bought again by another execution
+        // the old owners can't approve/execute sell orders over the NFT.
+        // Although we probably will separate/remove any 
+        // post-buy handling mechanism from this contract.
+    }
 }
 
 contract ClowderMain is
@@ -107,10 +132,10 @@ contract ClowderMain is
     mapping(uint256 => Execution) public executions;
 
     /* Events */
-    event OpenSeaOrderSet(
-        OpenSeaUtil.OpenSeaOrder order,
-        bytes32 paramsOrderHash
-    );
+    // event OpenSeaOrderSet(
+    //     OpenSeaUtil.OpenSeaOrder order,
+    //     bytes32 paramsOrderHash
+    // );
 
     constructor(address _WETH, address _protocolFeeReceiver) {
         WETH = _WETH;
@@ -137,7 +162,7 @@ contract ClowderMain is
 
         for (uint256 i = 0; i < buyOrderNonces.length; i++) {
             // if (!isUsedBuyNonce[msg.sender][buyOrderNonces[i]]) {
-                isUsedBuyNonce[msg.sender][buyOrderNonces[i]] = true; // used
+            isUsedBuyNonce[msg.sender][buyOrderNonces[i]] = true; // used
             // }
         }
     }
@@ -187,6 +212,11 @@ contract ClowderMain is
 
         uint256 protocolFeeTransferred = 0;
         uint256 executorPriceTransferred = 0;
+
+        // TODO: maybe group contributions by signer
+        // so that we save gas by doing only one or two transfers per signer
+        // Possibly recieve the data grouped from outside blockchain to 
+        // save gas on the grouping.
 
         // validate and process all the buy orders
         for (uint256 i = 0; i < buyOrders.length; i++) {
@@ -353,7 +383,7 @@ contract ClowderMain is
 
         // TODO: should we do this?:
         // require(clowder is new owner of tokenId in collection, according to collection of course);
-        // hmm, but, if the collection contract said transfer was successful, then 
+        // hmm, but, if the collection contract said transfer was successful, then
         // it could also lie in here when asking for the new owner of the tokenId
     }
 
@@ -385,162 +415,166 @@ contract ClowderMain is
         execution.sellProtocolFee = protocolFee;
     }
 
-    function listOnOpenSea(
-        BuyOrderV1[] calldata orders,
-        uint256 executorPrice,
-        uint256 marketplaceFee // out of 10_000
-    ) external nonReentrant {
-        require(
-            orders.length > 0,
-            "ListOnMarketplace: Must have at least one order"
-        );
+    // function listOnOpenSea(
+    //     BuyOrderV1[] calldata orders,
+    //     uint256 executorPrice,
+    //     uint256 marketplaceFee // out of 10_000
+    // ) external nonReentrant {
+    //     require(
+    //         orders.length > 0,
+    //         "ListOnMarketplace: Must have at least one order"
+    //     );
 
-        uint256 protocolFee = (protocolFeeFractionFromSelling * executorPrice) /
-            10_000;
-        uint256 price = executorPrice - protocolFee;
-        uint256 executionId = orders[0].executionId;
+    //     uint256 protocolFee = (protocolFeeFractionFromSelling * executorPrice) /
+    //         10_000;
+    //     uint256 price = executorPrice - protocolFee;
+    //     uint256 executionId = orders[0].executionId;
 
-        Execution storage execution = executions[executionId];
+    //     Execution storage execution = executions[executionId];
 
-        /* Validations */
+    //     /* Validations */
 
-        require(execution.collection != address(0), "Execution doesn't exist");
+    //     require(execution.collection != address(0), "Execution doesn't exist");
 
-        require(!execution.sold, "Execution already sold");
+    //     require(!execution.sold, "Execution already sold");
 
-        uint256 minExpirationTime = BuyOrderV1Functions
-            .validateSellOrdersParameters(
-                isUsedSellNonce,
-                realContributions,
-                orders,
-                executionId,
-                execution,
-                price,
-                minConsensusForSellingOverBuyPrice,
-                minConsensusForSellingUnderOrEqualBuyPrice
-            );
+    //     uint256 minExpirationTime = BuyOrderV1Functions
+    //         .validateSellOrdersParameters(
+    //             isUsedSellNonce,
+    //             realContributions,
+    //             orders,
+    //             executionId,
+    //             execution,
+    //             price,
+    //             minConsensusForSellingOverBuyPrice,
+    //             minConsensusForSellingUnderOrEqualBuyPrice
+    //         );
 
-        // Validate signatures (includes interaction with
-        // other contracts)
-        BuyOrderV1Functions.validateSignatures(orders, EIP712_DOMAIN_SEPARATOR);
+    //     // Validate signatures (includes interaction with
+    //     // other contracts)
+    //     BuyOrderV1Functions.validateSignatures(orders, EIP712_DOMAIN_SEPARATOR);
 
-        OpenSeaUtil.initializationAndPermissions(
-            address(this),
-            execution.collection,
-            WETH
-        );
+    //     OpenSeaUtil.initializationAndPermissions(
+    //         address(this),
+    //         execution.collection,
+    //         WETH
+    //     );
 
-        {
-            // OpenSea listing
+    //     {
+    //         // OpenSea listing
 
-            // creating the OpenSea sell order
-            (
-                bytes32 _hash,
-                bytes32 paramsOrderHash,
-                OpenSeaUtil.OpenSeaOrder memory openSeaOrder
-            ) = OpenSeaUtil.buildAndGetOpenSeaOrderHash(
-                    address(this),
-                    execution.collection,
-                    execution.tokenId,
-                    // calculating list price:
-                    (10_000 * executorPrice) / (10_000 - marketplaceFee) + 1,
-                    minExpirationTime,
-                    marketplaceFee,
-                    WETH
-                );
-            require(_hash != 0, "Hash must not be 0");
+    //         // creating the OpenSea sell order
+    //         (
+    //             bytes32 _hash,
+    //             bytes32 paramsOrderHash,
+    //             OpenSeaUtil.OpenSeaOrder memory openSeaOrder
+    //         ) = OpenSeaUtil.buildAndGetOpenSeaOrderHash(
+    //                 address(this),
+    //                 execution.collection,
+    //                 execution.tokenId,
+    //                 // calculating list price:
+    //                 (10_000 * executorPrice) / (10_000 - marketplaceFee) + 1,
+    //                 minExpirationTime,
+    //                 marketplaceFee,
+    //                 WETH
+    //             );
+    //         require(_hash != 0, "Hash must not be 0");
 
-            _beforeStoringTheListingHash(
-                minExpirationTime,
-                price,
-                executionId,
-                protocolFee
-            );
+    //         _beforeStoringTheListingHash(
+    //             minExpirationTime,
+    //             price,
+    //             executionId,
+    //             protocolFee
+    //         );
 
-            // storing the corresponding hash by executionId
-            execution.openSeaOrderHash = _hash;
+    //         // storing the corresponding hash by executionId
+    //         execution.openSeaOrderHash = _hash;
 
-            emit OpenSeaOrderSet(openSeaOrder, paramsOrderHash);
-        }
-    }
+    //         emit OpenSeaOrderSet(openSeaOrder, paramsOrderHash);
+    //     }
+    // }
 
-    function listOnLooksRare(
-        BuyOrderV1[] calldata orders,
-        uint256 executorPrice,
-        uint256 marketplaceFee, // out of 10_000
-        uint256 nonce
-    ) external nonReentrant {
-        require(
-            orders.length > 0,
-            "ListOnMarketplace: Must have at least one order"
-        );
+    // function listOnLooksRare(
+    //     BuyOrderV1[] calldata orders,
+    //     uint256 executorPrice,
+    //     uint256 marketplaceFee, // out of 10_000
+    //     uint256 nonce
+    // ) external nonReentrant {
+    //     require(
+    //         orders.length > 0,
+    //         "ListOnMarketplace: Must have at least one order"
+    //     );
 
-        uint256 protocolFee = (protocolFeeFractionFromSelling * executorPrice) /
-            10_000;
-        uint256 price = executorPrice - protocolFee;
-        uint256 executionId = orders[0].executionId;
+    //     uint256 protocolFee = (protocolFeeFractionFromSelling * executorPrice) /
+    //         10_000;
+    //     uint256 price = executorPrice - protocolFee;
+    //     uint256 executionId = orders[0].executionId;
 
-        Execution storage execution = executions[executionId];
+    //     Execution storage execution = executions[executionId];
 
-        /* Validations */
+    //     /* Validations */
 
-        require(execution.collection != address(0), "Execution doesn't exist");
+    //     require(execution.collection != address(0), "Execution doesn't exist");
 
-        require(!execution.sold, "Execution already sold");
+    //     require(!execution.sold, "Execution already sold");
 
-        uint256 minExpirationTime = BuyOrderV1Functions
-            .validateSellOrdersParameters(
-                isUsedSellNonce,
-                realContributions,
-                orders,
-                executionId,
-                execution,
-                price,
-                minConsensusForSellingOverBuyPrice,
-                minConsensusForSellingUnderOrEqualBuyPrice
-            );
+    //     uint256 minExpirationTime = BuyOrderV1Functions
+    //         .validateSellOrdersParameters(
+    //             isUsedSellNonce,
+    //             realContributions,
+    //             orders,
+    //             executionId,
+    //             execution,
+    //             price,
+    //             minConsensusForSellingOverBuyPrice,
+    //             minConsensusForSellingUnderOrEqualBuyPrice
+    //         );
 
-        // Validate signatures (includes interaction with
-        // other contracts)
-        BuyOrderV1Functions.validateSignatures(orders, EIP712_DOMAIN_SEPARATOR);
+    //     // Validate signatures (includes interaction with
+    //     // other contracts)
+    //     BuyOrderV1Functions.validateSignatures(orders, EIP712_DOMAIN_SEPARATOR);
 
-        LooksRareUtil.initializationAndPermissions(
-            address(this),
-            execution.collection
-        );
+    //     LooksRareUtil.initializationAndPermissions(
+    //         address(this),
+    //         execution.collection
+    //     );
 
-        {
-            // LooksRare listing
-            (
-                bytes32 _hash,
-                // LooksRareUtil.MakerOrder memory order
-            ) = LooksRareUtil.buildAndGetMarketplaceOrderHash(
-                    address(this),
-                    execution.collection,
-                    execution.tokenId,
-                    // calculating list price:
-                    (10_000 * executorPrice) / (10_000 - marketplaceFee) + 1,
-                    minExpirationTime,
-                    marketplaceFee,
-                    WETH,
-                    nonce
-                );
-            require(_hash != 0, "Hash must not be 0");
+    //     {
+    //         // LooksRare listing
+    //         (
+    //             bytes32 _hash, // LooksRareUtil.MakerOrder memory order
 
-            _beforeStoringTheListingHash(
-                minExpirationTime,
-                price,
-                executionId,
-                protocolFee
-            );
+    //         ) = LooksRareUtil.buildAndGetMarketplaceOrderHash(
+    //                 address(this),
+    //                 execution.collection,
+    //                 execution.tokenId,
+    //                 // calculating list price:
+    //                 (10_000 * executorPrice) / (10_000 - marketplaceFee) + 1,
+    //                 minExpirationTime,
+    //                 marketplaceFee,
+    //                 WETH,
+    //                 nonce
+    //             );
+    //         require(_hash != 0, "Hash must not be 0");
 
-            // storing the corresponding hash by executionId
-            execution.looksRareOrderHash = _hash;
+    //         _beforeStoringTheListingHash(
+    //             minExpirationTime,
+    //             price,
+    //             executionId,
+    //             protocolFee
+    //         );
 
-            // emit OpenSeaOrderSet(openSeaOrder, paramsOrderHash);
-        }
-    }
+    //         // storing the corresponding hash by executionId
+    //         execution.looksRareOrderHash = _hash;
 
+    //         // emit OpenSeaOrderSet(openSeaOrder, paramsOrderHash);
+    //     }
+    // }
+
+    // TODO: invalidate signature once detected it was used by a marketplace
+    // to prevent reusing it.
+    // Although we probably will separate/remove any 
+    // post-buy handling mechanism from this contract.
     function isValidSignature(bytes32 _hash, bytes calldata _signature)
         external
         view
@@ -677,4 +711,8 @@ contract ClowderMain is
     ) internal {
         SafeERC20Transfer.safeERC20Transfer(WETH, from, to, amount);
     }
+
+    // function getSnowAccessKey(address addr) external pure returns (bytes32) {
+    //     return keccak256(abi.encodePacked(addr));
+    // }
 }

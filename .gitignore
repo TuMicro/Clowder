@@ -6,6 +6,10 @@
 /outmarkets
 /outfiles
 
+# compiled js
+/lib
+
+firebase-debug.log
 
 allPairs_bsc.json
 
@@ -13,3 +17,8 @@ allPairs_bsc.json
 cache
 artifacts
 typechain-types
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
+

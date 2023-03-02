@@ -15,11 +15,11 @@ import "./tasks/list_on_opensea";
 import "./tasks/get_execution";
 import "./tasks/list_on_looksrare";
 import "./tasks/buy_on_looksrare";
+import "./tasks/delegate_nft";
+import "./tasks/change_protocol_fee_fraction";
+
 
 const infuraApiKey: string | undefined = process.env.INFURA_API_KEY;
-if (!infuraApiKey) {
-  throw new Error("Please set your INFURA_API_KEY in a .env file");
-}
 
 export const chainIds = {
   "arbitrum-mainnet": 42161,
@@ -31,21 +31,23 @@ export const chainIds = {
   "polygon-mainnet": 137,
   "polygon-mumbai": 80001,
   rinkeby: 4,
+  evmos: 9001,
+  goerli: 5,
 };
 
 export function getVerificationConfig(chain: keyof typeof chainIds): null | {
-  apiKey : string,
+  apiKey: string,
   apiBaseUrl: string,
 } {
   if (chain === "rinkeby") {
     return {
-      apiKey : process.env.ETHERSCAN_API_KEY ?? "",
+      apiKey: process.env.ETHERSCAN_API_KEY ?? "",
       apiBaseUrl: "https://api-rinkeby.etherscan.io",
     }
   }
   if (chain === "mainnet") {
     return {
-      apiKey : process.env.ETHERSCAN_API_KEY ?? "",
+      apiKey: process.env.ETHERSCAN_API_KEY ?? "",
       apiBaseUrl: "https://api.etherscan.io",
     }
   }
@@ -61,13 +63,19 @@ export function getChainRpcUrl(chain: keyof typeof chainIds): string {
     case "bsc":
       jsonRpcUrl = "https://bsc-dataseed1.binance.org";
       break;
+    case "evmos":
+      jsonRpcUrl = "https://eth.bd.evmos.org:8545";
+      break;
     default:
+      if (!infuraApiKey) {
+        throw new Error("Please set INFURA_API_KEY in your env vars or set a jsonRpcUrl in hardhat.config.ts");
+      }
       jsonRpcUrl = "https://" + chain + ".infura.io/v3/" + infuraApiKey;
   }
   return jsonRpcUrl;
 }
 
-const forkForTesting: keyof typeof chainIds = 'rinkeby';
+const forkForTesting: keyof typeof chainIds = 'goerli';
 const forkForVerification: keyof typeof chainIds = 'rinkeby';
 
 const verificationConfig = getVerificationConfig(forkForVerification);
@@ -101,12 +109,20 @@ const config: HardhatUserConfig = {
       url: getChainRpcUrl('rinkeby'),
       accounts: [process.env.PK_RINKEBY_DEPLOYER ?? ""],
     },
+    goerli: {
+      url: getChainRpcUrl('goerli'),
+      accounts: [process.env.PK_RINKEBY_DEPLOYER ?? ""],
+    },
     optimism: {
       url: getChainRpcUrl('optimism-mainnet'),
       accounts: [process.env.PK_RINKEBY_DEPLOYER ?? ""],
     },
     arbitrum: {
       url: getChainRpcUrl('arbitrum-mainnet'),
+      accounts: [process.env.PK_RINKEBY_DEPLOYER ?? ""],
+    },
+    evmos: {
+      url: getChainRpcUrl('evmos'),
       accounts: [process.env.PK_RINKEBY_DEPLOYER ?? ""],
     }
   },
@@ -117,7 +133,6 @@ const config: HardhatUserConfig = {
       1: 0, // similarly on mainnet it will take the first account as deployer. Note though that depending on how hardhat network are configured, the account 0 on one network can be different than on another
       4: '0xC103d1b071AFA925714eE55b2F4869300C4331C4', // but for rinkeby it will be a specific address, also for any chain with this id
       10: '0xC103d1b071AFA925714eE55b2F4869300C4331C4', // optimism deployer
-      "goerli": '0x84b9514E013710b9dD0811c9Fe46b837a4A0d8E0', //it can also specify a specific netwotk name (specified in hardhat.config.js)
     },
   },
 
@@ -125,8 +140,8 @@ const config: HardhatUserConfig = {
     externalArtifacts: ['./external_abis/**/*.json'],
   },
 
-  verify : {
-    etherscan : verificationConfig,
+  verify: {
+    etherscan: verificationConfig,
   }
 };
 
