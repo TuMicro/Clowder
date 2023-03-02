@@ -75,7 +75,7 @@ export function getChainRpcUrl(chain: keyof typeof chainIds): string {
   return jsonRpcUrl;
 }
 
-const forkForTesting: keyof typeof chainIds = 'goerli';
+const forkForTesting: keyof typeof chainIds = 'mainnet';
 const forkForVerification: keyof typeof chainIds = 'rinkeby';
 
 const verificationConfig = getVerificationConfig(forkForVerification);

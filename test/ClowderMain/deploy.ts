@@ -41,13 +41,13 @@ export async function deployForTests(): Promise<DeployOutputs> {
   const buyOrderV1FunctionsLibrary = await buyOrderV1FunctionsFactory.deploy()
   await buyOrderV1FunctionsLibrary.deployed();
 
-  const OpenSeaUtilFactory = await ethers.getContractFactory('OpenSeaUtil');
-  const OpenSeaUtilLibrary = await OpenSeaUtilFactory.deploy()
-  await OpenSeaUtilLibrary.deployed();
+  // const OpenSeaUtilFactory = await ethers.getContractFactory('OpenSeaUtil');
+  // const OpenSeaUtilLibrary = await OpenSeaUtilFactory.deploy()
+  // await OpenSeaUtilLibrary.deployed();
 
-  const LooksRareUtilFactory = await ethers.getContractFactory('LooksRareUtil');
-  const LooksRareUtilLibrary = await LooksRareUtilFactory.deploy()
-  await LooksRareUtilLibrary.deployed();
+  // const LooksRareUtilFactory = await ethers.getContractFactory('LooksRareUtil');
+  // const LooksRareUtilLibrary = await LooksRareUtilFactory.deploy()
+  // await LooksRareUtilLibrary.deployed();
   
   const clowderMainFactory = await ethers.getContractFactory('ClowderMain', {
     libraries: {

@@ -9,6 +9,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment,) {
   const chainId = await getChainId();
   const chainId_n = Number(chainId);
 
+  console.log("Deploying ClowderMain to network " + chainId + " 🚀");
+
   const buyOrderV1FunctionsLibrary = await deploy("BuyOrderV1Functions", {
     from: deployer,
   });
