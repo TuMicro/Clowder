@@ -4,6 +4,8 @@ Solhint works through vscode even without having it on dependencies. (tested wit
 
 Usage:
 ```
+# Sometimes you may need to comment out the tasks on the hardhat.config.ts file first just to generate
+# the typechain types the first time. Otherwise it will fail.
 npx hardhat compile
 npx hardhat test
 ```
