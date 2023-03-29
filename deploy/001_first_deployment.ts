@@ -11,12 +11,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment,) {
 
   console.log("Deploying ClowderMain to network " + chainId + " 🚀");
 
-  const buyOrderV1FunctionsLibrary = await deploy("BuyOrderV1Functions", {
-    from: deployer,
-  });
+  // const buyOrderV1FunctionsLibrary = await deploy("BuyOrderV1Functions", {
+  //   from: deployer,
+  // });
 
   let libraries: { [libraryName: string]: string } = {
-    "BuyOrderV1Functions": buyOrderV1FunctionsLibrary.address,
+    // 'BuyOrderV1Functions': buyOrderV1FunctionsLibrary.address,
   };
 
   if (chainId_n === 4) { // only on rinkeby

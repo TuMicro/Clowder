@@ -22,12 +22,13 @@ task("execute_buy", "Gets WETH, performs approvals and then performs a buy. "
     // this ERC721 collection should be imported into OpenSea
     const collectionAddress = "0x0381916e8172d96cddc682490b522e4f539f85d6";
     const userWallet = new Wallet(process.env.PK_USER ?? "", ethers.provider);
-    
+
     const testERC721Holder = new Wallet(process.env.PK_ERC721_HOLDER ?? "", ethers.provider);
     const executionId = BigNumber.from(0);
-    // const testERC721TokenId = BigNumber.from(7201); // looksrare team testing
     const testERC721TokenId = BigNumber.from(2491);
     const contribution = parseEther("0.01");
+
+    const delegate = userWallet.address;
 
     /* Preparation */
 
@@ -57,9 +58,7 @@ task("execute_buy", "Gets WETH, performs approvals and then performs a buy. "
       buyNonce: BigNumber.from(0),
       buyPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
 
-      sellPrice: ETHER.mul(30),
-      sellPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
-      sellNonce: BigNumber.from(0),
+      delegate,
     };
     const eip712Domain = ClowderSignature.getDomain(chainId, clowderMain.address);
     const buyOrderSigned = await ClowderSignature.signBuyOrder(buyOrder,

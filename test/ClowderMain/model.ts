@@ -11,12 +11,7 @@ export interface BuyOrderV1Basic {
   readonly buyPriceEndTime: BigNumber; // order expiration time
   readonly buyNonce: BigNumber; // for differentiating orders (it is not possible to re-use the nonce)
   
-  // sell order parameters (it you don't want to 
-  // set this out you can set a very high price
-  // or an expired time)
-  readonly sellPrice: BigNumber; // sell WETH price 
-  readonly sellPriceEndTime: BigNumber; // sell order expiration time
-  readonly sellNonce: BigNumber;
+  readonly delegate : string; // delegate address
 }
 
 export interface BuyOrderV1 extends BuyOrderV1Basic {

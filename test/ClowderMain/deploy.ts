@@ -31,15 +31,17 @@ export interface DeployOutputs {
 
   wethTokenContract: Contract;
   wethHolder: SignerWithAddress,
+
+  delegate: SignerWithAddress,
 }
 
 export async function deployForTests(): Promise<DeployOutputs> {
   const [owner, nonOwner, thirdParty, feeReceiver, testERC721Owner,
-    testERC721Holder, wethHolder] = await ethers.getSigners();
+    testERC721Holder, wethHolder, delegate] = await ethers.getSigners();
 
-  const buyOrderV1FunctionsFactory = await ethers.getContractFactory('BuyOrderV1Functions');
-  const buyOrderV1FunctionsLibrary = await buyOrderV1FunctionsFactory.deploy()
-  await buyOrderV1FunctionsLibrary.deployed();
+  // const buyOrderV1FunctionsFactory = await ethers.getContractFactory('BuyOrderV1Functions');
+  // const buyOrderV1FunctionsLibrary = await buyOrderV1FunctionsFactory.deploy()
+  // await buyOrderV1FunctionsLibrary.deployed();
 
   // const OpenSeaUtilFactory = await ethers.getContractFactory('OpenSeaUtil');
   // const OpenSeaUtilLibrary = await OpenSeaUtilFactory.deploy()
@@ -51,7 +53,7 @@ export async function deployForTests(): Promise<DeployOutputs> {
   
   const clowderMainFactory = await ethers.getContractFactory('ClowderMain', {
     libraries: {
-      'BuyOrderV1Functions': buyOrderV1FunctionsLibrary.address,
+      // 'BuyOrderV1Functions': buyOrderV1FunctionsLibrary.address,
       // 'OpenSeaUtil': OpenSeaUtilLibrary.address,
       // 'LooksRareUtil': LooksRareUtilLibrary.address,
     }
@@ -116,5 +118,7 @@ export async function deployForTests(): Promise<DeployOutputs> {
 
     wethTokenContract,
     wethHolder,
+
+    delegate,
   }
 }

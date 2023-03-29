@@ -41,7 +41,7 @@ struct BuyOrderV1 {
  * @notice
  */
 library BuyOrderV1Functions {
-    bytes32 internal constant PASSIVE_BUY_ORDER_HASH = 0x72e794cb40f2ebfd460c7e8f21afeacac61a902963a831638aeff99e28bc690f;
+    bytes32 internal constant PASSIVE_BUY_ORDER_HASH = 0x5747656214602028f3803e6af1a359d7948c36532bd38d033969d6c4b13e73eb;
 
     function hash(BuyOrderV1 memory passiveOrder) internal pure returns (bytes32) {
         return
@@ -69,25 +69,25 @@ library BuyOrderV1Functions {
     // other contracts)
     // Remember that we give away execution flow
     // in case the signer is a contract (isValidSignature)
-    function validateSignatures(
-        BuyOrderV1[] calldata orders,
-        bytes32 domainSeparator
-    ) public view {
-        for (uint256 i = 0; i < orders.length; i++) {
-            BuyOrderV1 calldata order = orders[i];
-            // Validate order signature
-            bytes32 orderHash = hash(order);
-            require(
-                SignatureUtil.verify(
-                    orderHash,
-                    order.signer,
-                    order.v,
-                    order.r,
-                    order.s,
-                    domainSeparator
-                ),
-                "Signature: Invalid"
-            );
-        }
-    }
+    // function validateSignatures(
+    //     BuyOrderV1[] calldata orders,
+    //     bytes32 domainSeparator
+    // ) public view {
+    //     for (uint256 i = 0; i < orders.length; i++) {
+    //         BuyOrderV1 calldata order = orders[i];
+    //         // Validate order signature
+    //         bytes32 orderHash = hash(order);
+    //         require(
+    //             SignatureUtil.verify(
+    //                 orderHash,
+    //                 order.signer,
+    //                 order.v,
+    //                 order.r,
+    //                 order.s,
+    //                 domainSeparator
+    //             ),
+    //             "Signature: Invalid"
+    //         );
+    //     }
+    // }
 }

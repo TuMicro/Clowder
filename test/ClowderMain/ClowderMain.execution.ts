@@ -5,13 +5,12 @@ import { ClowderSignature } from "./clowdersignature";
 import { ETHER, MAX_UINT256 } from "../constants/ether";
 import { getUnixTimestamp, ONE_DAY_IN_SECONDS } from "../constants/time";
 import { BuyOrderV1, BuyOrderV1Basic } from "./model";
-import { formatEther } from "ethers/lib/utils";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "hardhat";
 
 export async function prepareForSingleBuySellTest(deployOutputs: DeployOutputs) {
   const { clowderMain, thirdParty, eip712Domain, feeFraction,
-    testERC721, testERC721Holder, wethTokenContract, wethHolder } = deployOutputs;
+    testERC721, testERC721Holder, wethTokenContract, wethHolder,
+    delegate } = deployOutputs;
 
   const executionId = BigNumber.from(0);
   const executionPrice = ETHER.mul(10);
@@ -37,9 +36,7 @@ export async function prepareForSingleBuySellTest(deployOutputs: DeployOutputs) 
     buyNonce: BigNumber.from(0),
     buyPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
 
-    sellPrice: ETHER.mul(30),
-    sellPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
-    sellNonce: BigNumber.from(0),
+    delegate: delegate.address,
   };
   const buyOrderSigned = await ClowderSignature.signBuyOrder(buyOrder,
     eip712Domain,
@@ -154,12 +151,11 @@ describe.only("Execution functions", () => {
     )).to.be.revertedWith("Order nonce is unusable");
   });
 
-  it("Must execute a buy order transferring the NFT and required amounts. Must be able to sell", async () => {
+  it("Must execute a buy order transferring the NFT and required amounts. Then NFT must belong to the delegate.", async () => {
     const { clowderMain, feeReceiver, owner,
       testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
-      wethHolder, eip712Domain, thirdParty } = deployOutputs;
+      wethHolder, eip712Domain, thirdParty, delegate } = deployOutputs;
 
-    const nftBalanceBefore = await testERC721.balanceOf(clowderMain.address);
     const buyerWethBalanceBefore = await wethTokenContract.balanceOf(buyOrder.signer);
     const sellerWethBalanceBefore = await wethTokenContract.balanceOf(testERC721Holder.address);
     const feeReceiverBalanceBefore = await wethTokenContract.balanceOf(feeReceiver.address);
@@ -168,15 +164,12 @@ describe.only("Execution functions", () => {
       executionPrice,
       testERC721TokenId
     );
-    const nftBalanceAfter = await testERC721.balanceOf(clowderMain.address);
     const buyerWethBalanceAfter = await wethTokenContract.balanceOf(buyOrder.signer);
     const sellerWethBalanceAfter = await wethTokenContract.balanceOf(testERC721Holder.address);
     const feeReceiverBalanceAfter = await wethTokenContract.balanceOf(feeReceiver.address);
 
     // protocol fees
     expect(feeReceiverBalanceAfter.sub(feeReceiverBalanceBefore).eq(protocolFee)).to.be.true;
-    // nft transfer
-    expect(nftBalanceAfter.sub(nftBalanceBefore).eq(1)).to.be.true;
     // buyer WETH transfer
     const buyerContribution = buyerWethBalanceBefore.sub(buyerWethBalanceAfter);
     expect(buyerContribution.eq(price)).to.be.true;
@@ -193,113 +186,21 @@ describe.only("Execution functions", () => {
       testERC721TokenId
     )).to.be.revertedWith("Execute: Id already executed");
 
+    // testing delegate owns the NFT
+    expect(await testERC721.ownerOf(testERC721TokenId)).to.eq(delegate.address);
 
-    // testing sell order expired rejection
-    const buyOrderExpired: BuyOrderV1Basic = {
-      ...buyOrder,
-      sellPriceEndTime: getUnixTimestamp().sub(ONE_DAY_IN_SECONDS),
-    };
-    const buyOrderExpiredSigned = await ClowderSignature.signBuyOrder(
-      buyOrderExpired,
-      eip712Domain,
-      thirdParty
-    );
-    await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
-      [buyOrderExpiredSigned],
-      buyOrder.sellPrice.mul(2),
-    )).to.be.revertedWith('Order expired');
+    // testing delegate can transfer the NFT
+    await testERC721.connect(delegate).transferFrom(delegate.address, owner.address, testERC721TokenId);
 
-    // testing sell order multiple votes from 
-    // same owner rejection
-    await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
-      [buyOrderSigned, buyOrderSigned],
-      buyOrder.sellPrice.mul(2),
-    )).to.be.revertedWith("Signer already voted");
-
-    // testing sell order price rejection
-    await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
-      [buyOrderSigned],
-      BigNumber.from(0),
-    )).to.be.revertedWith("Order can't accept price");
-
-    // testing order collection rejection
-    const buyOrderOtherCollection: BuyOrderV1Basic = {
-      ...buyOrder,
-      collection: "0x0000000000000000000000000000000000000001",
-    };
-    const buyOrderOtherCollectionSigned = await ClowderSignature.signBuyOrder(
-      buyOrderOtherCollection,
-      eip712Domain,
-      thirdParty
-    );
-    await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
-      [buyOrderOtherCollectionSigned],
-      buyOrder.sellPrice.mul(2),
-    )).to.be.revertedWith("Order collection mismatch");
-
-    // Must be able to sell
-    const protocolSellingFeeFraction = BigNumber.from(10); // out of 10_000
-    await clowderMain.connect(owner).changeProtocolFeeFractionFromSelling(protocolSellingFeeFraction);
-    const acceptedSellPrice = buyOrder.sellPrice;
-    const sellExecutionPrice = acceptedSellPrice.mul(10_000).div(BigNumber.from(10_000)
-      .sub(protocolSellingFeeFraction)).add(1); // we add 1 for rounding error
-    const sellProtocolFee = sellExecutionPrice.mul(protocolSellingFeeFraction).div(10_000);
-    const actualSellPrice = sellExecutionPrice.sub(sellProtocolFee);
-    const protocolFeeRecieverBalanceBefore = await wethTokenContract.balanceOf(feeReceiver.address);
-    // testing calculations:
-    expect(actualSellPrice.gte(acceptedSellPrice)).to.be.true;
-    expect(actualSellPrice.sub(acceptedSellPrice).lt(10)).to.be.true; // less than 10wei difference
-    // executing the sell
-    await clowderMain.connect(wethHolder).executeOnPassiveSellOrders([buyOrderSigned], sellExecutionPrice);
-    // making sure the new NFT owner is the wethHolder
-    expect(await testERC721.ownerOf(testERC721TokenId)).to.eq(wethHolder.address);
-    // the original buyer claims the WETH
-    await clowderMain.connect(thirdParty).claimProceeds([buyOrderSigned.executionId], thirdParty.address);
-    // making sure the original buyer receives the correct amount of proceeds (WETH)
-    const buyerWethBalanceAfterSelling = await wethTokenContract.balanceOf(buyOrder.signer);
-    const groupBuyerProceeds = buyerWethBalanceAfterSelling.sub(buyerWethBalanceAfter);
-    const groupBuyerProceedsExpected = realContribution.mul(actualSellPrice).div(price);
-    expect(groupBuyerProceeds.eq(groupBuyerProceedsExpected)).to.be.true;
-    // making sure the fee receiver receives the correct amount WETH
-    const protocolFeeRecieverBalanceAfter = await wethTokenContract.balanceOf(feeReceiver.address);
-    expect(protocolFeeRecieverBalanceAfter.sub(protocolFeeRecieverBalanceBefore).eq(
-      sellExecutionPrice.mul(protocolSellingFeeFraction).div(10_000))).to.be.true;
-
-    // testing rejection when reusing the executionId
-    await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
-      [buyOrderSigned], sellExecutionPrice
-    )).to.be.revertedWith("Execution already sold");
+    // testing now the owner owns the NFT
+    expect(await testERC721.ownerOf(testERC721TokenId)).to.eq(owner.address);
   });
 
-  it("Must allow sole owner to claim the NFT", async () => {
-    const { clowderMain, nonOwner,
-      testERC721, testERC721Holder, testERC721TokenId, thirdParty } = deployOutputs;
-
-    await clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
-      [buyOrderSigned],
-      executionPrice,
-      testERC721TokenId
-    );
-
-    await clowderMain.connect(thirdParty).claimNft(buyOrder.executionId, nonOwner.address);
-    expect(await testERC721.ownerOf(testERC721TokenId)).to.eq(nonOwner.address);
-
-    // testing executionId rejection
-    await expect(clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
-      [buyOrderSigned],
-      executionPrice,
-      testERC721TokenId
-    )).to.be.revertedWith("Execute: Id already executed");
-    await expect(clowderMain.connect(thirdParty).claimNft(buyOrder.executionId, nonOwner.address)
-    ).to.be.revertedWith("ClaimNft: Execution already sold");
-
-  });
-
-  it("Must allow groups of people to buy one NFT and sell it", async () => {
+  it("Must allow groups of people to buy one NFT and then the delegate owns the NFT", async () => {
     for (let n_buyers = 1; n_buyers <= 10; n_buyers++) {
       const { clowderMain, feeFraction,
         testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
-        wethHolder, eip712Domain, owner } = await deployForTests();
+        wethHolder, eip712Domain, owner, delegate } = await deployForTests();
 
       // approve the clowder contract to move nft holder's nfts
       await testERC721.connect(testERC721Holder).setApprovalForAll(
@@ -332,9 +233,7 @@ describe.only("Execution functions", () => {
           buyNonce,
           buyPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
 
-          sellPrice: orderBuyPrice.div(2), // just for these tests
-          sellPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
-          sellNonce: BigNumber.from(0),
+          delegate: delegate.address,
         };
         const orderSigned = await ClowderSignature.signBuyOrder(order,
           eip712Domain,
@@ -345,7 +244,6 @@ describe.only("Execution functions", () => {
 
       // when reviewing this code I don't understand why I added 1 here on the first place
       const buyExecutionPrice = orderBuyPrice.mul(10_000).div(feeFraction.add(10_000)).add(1);
-      const actualPricePaidByBuyers = buyExecutionPrice.mul(feeFraction.add(10_000)).div(10_000);
 
       const txn = await clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
         orders,
@@ -356,46 +254,11 @@ describe.only("Execution functions", () => {
       // print gas used
       console.log(`Gas used for ${n_buyers} buyers buy execution: ${receipt.gasUsed.toString()}`);
 
-      // getting the real contributions of each buyer
-      const buyersRealContributions = await Promise.all(signers.map(async (signer) => {
-        return await clowderMain.realContributions(signer.address, orders[0].executionId);
-      }));
+      // testing delegate owns the NFT
+      expect(await testERC721.ownerOf(testERC721TokenId)).to.eq(delegate.address);
 
-      // asserting sell fees and consensus parameters
-      const protocolSellingFeeFraction = BigNumber.from(0);
-      await clowderMain.connect(owner).changeProtocolFeeFractionFromSelling(protocolSellingFeeFraction);
-      const minConsensusForSellingOverBuyPrice = BigNumber.from(5_000);
-      await clowderMain.connect(owner).changeminConsensusForSellingOverBuyPrice(minConsensusForSellingOverBuyPrice);
-
-      // approve the clowder contract to spend wethHolder's WETH
-      await wethTokenContract.connect(wethHolder).approve(
-        clowderMain.address,
-        MAX_UINT256
-      );
-
-      let votes = BigNumber.from(0);
-      let slice_of_seller_votes = 0;
-      while (votes.mul(10_000).lt(actualPricePaidByBuyers.mul(minConsensusForSellingOverBuyPrice))) {
-        votes = votes.add(buyersRealContributions[slice_of_seller_votes]);
-        slice_of_seller_votes++;
-      }
-
-      // testing rejection when not achieving consensus
-      const revertMessage = slice_of_seller_votes - 1 <= 0 ?
-        "ExecuteSell: Must have at least one order" :
-        "Selling over or equal buyPrice: consensus not reached";
-      await expect(clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
-        orders.slice(0, slice_of_seller_votes - 1), // not enough votes
-        actualPricePaidByBuyers.add(1), // price greater then the buy price
-      )).to.be.revertedWith(revertMessage);
-
-      const sellTxn = await clowderMain.connect(wethHolder).executeOnPassiveSellOrders(
-        orders.slice(0, slice_of_seller_votes),
-        actualPricePaidByBuyers.add(1), // price greater then the buy price
-      );
-      const sellReceipt = await sellTxn.wait();
-      // print gas used
-      console.log(`Gas used for ${n_buyers} buyers with ${slice_of_seller_votes} voters sell execution: ${sellReceipt.gasUsed.toString()}`);
+      // testing delegate can transfer the NFT
+      await testERC721.connect(delegate).transferFrom(delegate.address, owner.address, testERC721TokenId);
     }
   }).timeout(2 * 60 * 1000);
 

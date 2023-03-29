@@ -30,9 +30,7 @@ export class ClowderSignature {
         { name: "buyPriceEndTime", type: "uint256" },
         { name: "buyNonce", type: "uint256" },
 
-        { name: "sellPrice", type: "uint256" },
-        { name: "sellPriceEndTime", type: "uint256" },
-        { name: "sellNonce", type: "uint256" },
+        { name: "delegate", type: "address" },
       ],
     };
   }
