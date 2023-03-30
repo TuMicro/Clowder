@@ -1,7 +1,8 @@
 {
   "name": "@turuta/clowder",
   "version": "0.0.1",
-  "description": "",
+  "description": "🪐👶🐈 Core smart contracts of Clowder.club",
+  "license": "BUSL-1.1",
   "engines": {
     "node": "16"
   },

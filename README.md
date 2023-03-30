@@ -112,3 +112,11 @@ Showing the commits tree:
 ```
 git log --oneline --graph --decorate --all
 ```
+
+## Licensing
+
+The primary license for the Core smart contracts of Clowder.club is the Business Source License 1.1 (`BUSL-1.1`), see `LICENSE`.
+
+### Exceptions
+
+- Some files are licensed under `MIT` (as indicated in its SPDX header).
