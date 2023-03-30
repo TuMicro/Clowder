@@ -7,6 +7,7 @@ import "@nomiclabs/hardhat-ethers";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "hardhat-deploy";
+import { GWEI } from "./test/constants/ether";
 
 // tasks
 // import "./tasks/execute_buy";
@@ -105,6 +106,15 @@ const config: HardhatUserConfig = {
       },
       chainId: chainIds[forkForTesting],
     },
+    mainnet: {
+      url: getChainRpcUrl('mainnet'),
+      accounts: [process.env.PK_MAINNET_DEPLOYER ?? ""],
+      gasPrice: 16 * GWEI.toNumber(),
+    },
+    polygon: {
+      url: getChainRpcUrl('polygon-mainnet'),
+      accounts: [process.env.PK_MAINNET_DEPLOYER ?? ""],
+    },
     rinkeby: {
       url: getChainRpcUrl('rinkeby'),
       accounts: [process.env.PK_RINKEBY_DEPLOYER ?? ""],
@@ -130,7 +140,7 @@ const config: HardhatUserConfig = {
   namedAccounts: {
     deployer: {
       default: 0, // here this will by default take the first account as deployer
-      1: 0, // similarly on mainnet it will take the first account as deployer. Note though that depending on how hardhat network are configured, the account 0 on one network can be different than on another
+      1: '0x346a7F06100A606eEA152f2281847Fa80f841894',
       4: '0xC103d1b071AFA925714eE55b2F4869300C4331C4', // but for rinkeby it will be a specific address, also for any chain with this id
       10: '0xC103d1b071AFA925714eE55b2F4869300C4331C4', // optimism deployer
     },
