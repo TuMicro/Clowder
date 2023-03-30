@@ -22,7 +22,7 @@ Base command:
 npx hardhat --network <networkName> deploy [options and flags]
 ```
 
-Use this first for testing, it will run only a simulation not a real deployment:
+Use this first for testing, it will run only a simulation not a real deployment: (Note: when using this on real networks this actually sends the transaction)
 ```
 npx hardhat --network goerli deploy --report-gas
 ```
