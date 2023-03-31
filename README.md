@@ -42,6 +42,8 @@ npx hardhat --network arbitrum deploy
 
 npx hardhat --network goerli deploy
 
+npx hardhat --network polygon deploy
+
 ```
 
 Logs:
@@ -53,7 +55,7 @@ Logs:
 
   * 0: https://arbiscan.io/address/0xF032987Bd3E4397d5E0DeB9cC87187Bdd1fE55e9
 
-  * 0: 
+  * 0: https://polygonscan.com/address/0x1ee3e77a522dfd7faf626373d1b1dcf5a29297bf
 
 * Rinkeby:
   * Owner/deployer: 0xC103d1b071AFA925714eE55b2F4869300C4331C4
@@ -72,9 +74,6 @@ npx hardhat deployments --network rinkeby
 npx hardhat get_execution --execution 0 --network rinkeby
 # flatten solidity
 npx hardhat flatten > flattened.sol
-
-# delegate the NFT
-npx hardhat delegate_nft --execution 0xb0b6ec61a3a7aa38a57a5e36947c79ad4a1c950d7a240351dd5f556f1eada3e8 --destination 0xDDc40255d888Df0d43C2ebc7a809F9221B493339 --network evmos
 
 # change the protocol fee fraction
 npx hardhat change_protocol_fee_fraction --feefraction 0 --network evmos

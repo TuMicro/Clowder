@@ -52,6 +52,12 @@ export function getVerificationConfig(chain: keyof typeof chainIds): null | {
       apiBaseUrl: "https://api.etherscan.io",
     }
   }
+  if (chain === "polygon-mainnet") {
+    return {
+      apiKey: process.env.POLYGONSCAN_API_KEY ?? "",
+      apiBaseUrl: "https://api.polygonscan.com",
+    }
+  }
   return null;
 }
 
@@ -77,7 +83,7 @@ export function getChainRpcUrl(chain: keyof typeof chainIds): string {
 }
 
 const forkForTesting: keyof typeof chainIds = 'mainnet';
-const forkForVerification: keyof typeof chainIds = 'rinkeby';
+const forkForVerification: keyof typeof chainIds = 'polygon-mainnet';
 
 const verificationConfig = getVerificationConfig(forkForVerification);
 if (verificationConfig === null) {
@@ -141,6 +147,7 @@ const config: HardhatUserConfig = {
     deployer: {
       default: 0, // here this will by default take the first account as deployer
       1: '0x346a7F06100A606eEA152f2281847Fa80f841894',
+      137: '0x346a7F06100A606eEA152f2281847Fa80f841894',
       4: '0xC103d1b071AFA925714eE55b2F4869300C4331C4', // but for rinkeby it will be a specific address, also for any chain with this id
       10: '0xC103d1b071AFA925714eE55b2F4869300C4331C4', // optimism deployer
     },
