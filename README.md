@@ -68,6 +68,10 @@ Some useful ones:
 ```
 # verify source code (make sure to set the config with forkForVerification)
 npx hardhat --network rinkeby etherscan-verify --solc-input
+
+# if the above fails, try this:
+npx hardhat --network mainnet etherscan-verify --api-key KEY --api-url URL
+
 # see deployments
 npx hardhat deployments --network rinkeby
 # get execution information

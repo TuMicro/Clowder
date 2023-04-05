@@ -7,6 +7,7 @@ import "@nomiclabs/hardhat-ethers";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "hardhat-deploy";
+
 import { GWEI } from "./test/constants/ether";
 
 // tasks
@@ -36,31 +37,6 @@ export const chainIds = {
   goerli: 5,
 };
 
-export function getVerificationConfig(chain: keyof typeof chainIds): null | {
-  apiKey: string,
-  apiBaseUrl: string,
-} {
-  if (chain === "rinkeby") {
-    return {
-      apiKey: process.env.ETHERSCAN_API_KEY ?? "",
-      apiBaseUrl: "https://api-rinkeby.etherscan.io",
-    }
-  }
-  if (chain === "mainnet") {
-    return {
-      apiKey: process.env.ETHERSCAN_API_KEY ?? "",
-      apiBaseUrl: "https://api.etherscan.io",
-    }
-  }
-  if (chain === "polygon-mainnet") {
-    return {
-      apiKey: process.env.POLYGONSCAN_API_KEY ?? "",
-      apiBaseUrl: "https://api.polygonscan.com",
-    }
-  }
-  return null;
-}
-
 export function getChainRpcUrl(chain: keyof typeof chainIds): string {
   let jsonRpcUrl: string;
   switch (chain) {
@@ -83,12 +59,6 @@ export function getChainRpcUrl(chain: keyof typeof chainIds): string {
 }
 
 const forkForTesting: keyof typeof chainIds = 'mainnet';
-const forkForVerification: keyof typeof chainIds = 'polygon-mainnet';
-
-const verificationConfig = getVerificationConfig(forkForVerification);
-if (verificationConfig === null) {
-  throw new Error(`No verification config found for ${forkForVerification}`);
-}
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -116,10 +86,22 @@ const config: HardhatUserConfig = {
       url: getChainRpcUrl('mainnet'),
       accounts: [process.env.PK_MAINNET_DEPLOYER ?? ""],
       gasPrice: 16 * GWEI.toNumber(),
+      verify: {
+        etherscan: {
+          apiKey: process.env.ETHERSCAN_API_KEY ?? "",
+          apiUrl: "https://api.etherscan.io/",
+        },
+      }
     },
     polygon: {
       url: getChainRpcUrl('polygon-mainnet'),
       accounts: [process.env.PK_MAINNET_DEPLOYER ?? ""],
+      verify: {
+        etherscan: {
+          apiKey: process.env.POLYGONSCAN_API_KEY ?? "",
+          apiUrl: "https://api.polygonscan.com/",
+        },
+      },
     },
     rinkeby: {
       url: getChainRpcUrl('rinkeby'),
@@ -157,9 +139,6 @@ const config: HardhatUserConfig = {
     externalArtifacts: ['./external_abis/**/*.json'],
   },
 
-  verify: {
-    etherscan: verificationConfig,
-  }
 };
 
 export default config;
