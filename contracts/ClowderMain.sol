@@ -70,7 +70,7 @@ contract ClowderMain is ClowderMainOwnable, ReentrancyGuard {
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
                 ), // EIP712 domain typehash
                 keccak256("Clowder"), // name
-                keccak256(bytes("0.1")), // version
+                keccak256(bytes("0.2")), // version
                 block.chainid,
                 address(this)
             )

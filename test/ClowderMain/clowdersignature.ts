@@ -11,7 +11,7 @@ export class ClowderSignature {
   static getDomain(chainId: number, verifyingContract: string): TypedDataDomain {
     return {
       name: "Clowder",
-      version: "0.1",
+      version: "0.2",
       chainId,
       verifyingContract,
     };
