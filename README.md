@@ -66,7 +66,7 @@ Logs:
 
 Some useful ones:
 ```
-# verify source code (make sure to set the config with forkForVerification)
+# verify source code (make sure to set the config on the respective network)
 npx hardhat --network rinkeby etherscan-verify --solc-input
 
 # if the above fails, try this:

@@ -3,7 +3,7 @@ import type { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signe
 import { BigNumber, Contract } from "ethers";
 import { hexStripZeros } from "ethers/lib/utils";
 import { ethers } from "hardhat";
-import { ClowderMain, TestERC721 } from "../../typechain-types";
+import { ClowderMain, TestERC721, Weth9, Weth9__factory } from "../../typechain-types";
 import { WETH9_ABI } from "../constants/erc20abi";
 import { ETHER } from "../constants/ether";
 import { WETH_ADDRESS } from "./addresses";
@@ -29,13 +29,13 @@ export interface DeployOutputs {
   testERC721Holder: SignerWithAddress,
   testERC721TokenId: BigNumber,
 
-  wethTokenContract: Contract;
+  wethTokenContract: Weth9;
   wethHolder: SignerWithAddress,
 
   delegate: SignerWithAddress,
 }
 
-export async function deployForTests(): Promise<DeployOutputs> {
+export async function deployForTests(customWethAddress: string | null = null): Promise<DeployOutputs> {
   const [owner, nonOwner, thirdParty, feeReceiver, testERC721Owner,
     testERC721Holder, wethHolder, delegate] = await ethers.getSigners();
 
@@ -50,7 +50,7 @@ export async function deployForTests(): Promise<DeployOutputs> {
   // const LooksRareUtilFactory = await ethers.getContractFactory('LooksRareUtil');
   // const LooksRareUtilLibrary = await LooksRareUtilFactory.deploy()
   // await LooksRareUtilLibrary.deployed();
-  
+
   const clowderMainFactory = await ethers.getContractFactory('ClowderMain', {
     libraries: {
       // 'BuyOrderV1Functions': buyOrderV1FunctionsLibrary.address,
@@ -58,10 +58,10 @@ export async function deployForTests(): Promise<DeployOutputs> {
       // 'LooksRareUtil': LooksRareUtilLibrary.address,
     }
   });
-  
+
   const network = await ethers.provider.getNetwork();
 
-  const wethAddress = WETH_ADDRESS[network.chainId];
+  const wethAddress = customWethAddress ?? WETH_ADDRESS[network.chainId];
   const clowderConstructorParams = [
     wethAddress,
     feeReceiver.address,
@@ -75,7 +75,7 @@ export async function deployForTests(): Promise<DeployOutputs> {
   // const clowderMain = <ClowderMain>await waffle.deployContract(owner,
   //   clowderMainArtifact, clowderConstructorParams);
 
-  
+
   // setting the fee fraction
   await clowderMain.connect(owner).changeProtocolFeeFraction(DEFAULT_FEE_FRACTION);
 
@@ -90,7 +90,7 @@ export async function deployForTests(): Promise<DeployOutputs> {
   await testERC721.connect(testERC721Owner).mint(testERC721Holder.address);
 
   // setting up the WETH contract and WETH holder
-  const wethTokenContract = new Contract(wethAddress, WETH9_ABI, ethers.provider);
+  const wethTokenContract = Weth9__factory.connect(wethAddress, ethers.provider);
   await ethers.provider.send("hardhat_setBalance", [ // because eth balance is spent on tests
     wethHolder.address,
     hexStripZeros(ETHER.mul(10_000).toHexString()),

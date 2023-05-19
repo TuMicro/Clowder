@@ -10,7 +10,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment,) {
   const chainId = await getChainId();
   const chainId_n = Number(chainId);
 
+  if (chainId_n !== 137) {
+    console.log("Skipping fee change for not being in Polygon mainnet");
+    return;
+  }
+
   const clowderMain = await get('ClowderMain');
+
+  console.log("changing protocol fee to zero");
 
   const clowder = ClowderMain__factory.connect(clowderMain.address, hre.ethers.provider);
 

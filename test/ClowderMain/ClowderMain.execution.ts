@@ -5,7 +5,11 @@ import { ClowderSignature } from "./clowdersignature";
 import { ETHER, MAX_UINT256 } from "../constants/ether";
 import { getUnixTimestamp, ONE_DAY_IN_SECONDS } from "../constants/time";
 import { BuyOrderV1, BuyOrderV1Basic } from "./model";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
+import { getChainRpcUrl } from "../../hardhat.config";
+import { ClowderCalleeExample__factory, ERC721__factory, Weth9__factory } from "../../typechain-types";
+import { AbiCoder } from "ethers/lib/utils";
+import { WETH_ADDRESS, WMATIC_ADDRESS_POLYGON } from "./addresses";
 
 export async function prepareForSingleBuySellTest(deployOutputs: DeployOutputs) {
   const { clowderMain, thirdParty, eip712Domain, feeFraction,
@@ -112,20 +116,21 @@ describe.only("Execution functions", () => {
     await expect(clowderMain.connect(nonOwner).executeOnPassiveBuyOrders(
       [buyOrderSigned],
       bigEnoughExecutionPrice, // price is bigger than the 40 eth price specified in the buy order
-      1)).to.be.revertedWith("Order can't accept price");
+      1,
+      [])).to.be.revertedWith("Order can't accept price");
 
     // testing nonce rejection
     await expect(clowderMain.connect(nonOwner).executeOnPassiveBuyOrders(
       [buyOrderSigned, buyOrderSigned], // using the same nonce twice
       executionPrice,
-      1)).to.be.revertedWith("Order nonce is unusable");
+      1, [])).to.be.revertedWith("Order nonce is unusable");
 
     // testing price acceptance (with a non owner of the NFT), transfer
     // error means prices were accepted by the contract
     await expect(clowderMain.connect(nonOwner).executeOnPassiveBuyOrders(
       [buyOrderSigned],
       executionPrice,
-      testERC721TokenId)).to.be.revertedWith('ERC721: transfer from incorrect owner');
+      testERC721TokenId, [])).to.be.revertedWith('ERC721: transfer from incorrect owner');
 
   });
 
@@ -147,7 +152,8 @@ describe.only("Execution functions", () => {
     await expect(clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
       [buyOrderSigned],
       executionPrice,
-      testERC721TokenId
+      testERC721TokenId,
+      []
     )).to.be.revertedWith("Order nonce is unusable");
   });
 
@@ -162,7 +168,8 @@ describe.only("Execution functions", () => {
     await clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
       [buyOrderSigned],
       executionPrice,
-      testERC721TokenId
+      testERC721TokenId,
+      []
     );
     const buyerWethBalanceAfter = await wethTokenContract.balanceOf(buyOrder.signer);
     const sellerWethBalanceAfter = await wethTokenContract.balanceOf(testERC721Holder.address);
@@ -183,7 +190,8 @@ describe.only("Execution functions", () => {
     await expect(clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
       [buyOrderSigned],
       executionPrice,
-      testERC721TokenId
+      testERC721TokenId,
+      []
     )).to.be.revertedWith("Execute: Id already executed");
 
     // testing delegate owns the NFT
@@ -248,7 +256,8 @@ describe.only("Execution functions", () => {
       const txn = await clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
         orders,
         buyExecutionPrice,
-        testERC721TokenId
+        testERC721TokenId,
+        []
       );
       const receipt = await txn.wait();
       // print gas used
@@ -262,12 +271,124 @@ describe.only("Execution functions", () => {
     }
   }).timeout(2 * 60 * 1000);
 
-  // it("Must return snow access key", async () => {
-  //   const { clowderMain } = await deployForTests();
-  //   const addr = '0x606be0248B77c89Cd44dfEA0EA895EA42e25748D';
-  //   const snowAccessKey = await clowderMain.getSnowAccessKey(addr);
-  //   console.log("snowAccessKey");
-  //   console.log(snowAccessKey);
-  // }).timeout(2 * 60 * 1000);
+
+  it.only("Must be able to flashbuy an NFT", async () => {
+
+    // get hre and change network to mainnet
+    await network.provider.request({
+      method: "hardhat_reset",
+      params: [{
+        forking: {
+          jsonRpcUrl: getChainRpcUrl("polygon-mainnet"),
+          blockNumber: 42877874,
+        },
+        // chainId: 137, // this doesn't work
+      }],
+    });
+    // NOTE: no matter what jsonRpcUrl you set above
+    // the chainId is still the same as set in the hardhat.config.js file
+
+    const nn = await ethers.provider.getNetwork();
+    if (nn.chainId !== 137) {
+      throw new Error("Wrong network, make sure to fork polygon mainnet in the hardhat.config.js file also");
+    }
+
+    // print the current block number
+    console.log(`Current block number: ${await ethers.provider.getBlockNumber()}`);
+
+    // deploying again because we just reset the network
+    const { clowderMain, feeReceiver, feeFraction, owner,
+      testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
+      eip712Domain, wethHolder: user, delegate } = await deployForTests();
+
+
+    // approve the clowder contract to spend wethHolder's WETH
+    await wethTokenContract.connect(user).approve(
+      clowderMain.address,
+      MAX_UINT256
+    );
+
+    // NFT order information
+    const tokenId = BigNumber.from(3836);
+    const data = "0x00000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000185664dbc69a4000000000000000000000000000cc6eed15546ea7d695e69152f9ffc19d6f48c05100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000cedf6129f9a20109f0e0f043c1e01590a2d6ca60000000000000000000000000000000000000000000000000000000000000efc0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000645ebd4d00000000000000000000000000000000000000000000000000000000654c0b430000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001144f0670000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f00000000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f00000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000024000000000000000000000000000000000000000000000000000000000000002e0000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000a8c0ff92d4c0000000000000000000000000000000a26b00c1f0df003000390027140000faa719000000000000000000000000000000000000000000000000015f021397cf0000000000000000000000000000f74994f65052bf6a8565e0793202ae723aa6efa600000000000000000000000000000000000000000000000000000000000000408e1a9170dcbb0bc772ff3cf0c3ba705defffaa5da714d220df50cb6930610617fa0229e39fca0e4817821146fd29236439e0161d83a00a9daf99a34446c7a8811d4da48b";
+    const to = "0x00000000000000adc04c56bf30ac9d3c0aaf14dc";
+    const value = BigNumber.from("0x1a5e27eef13e0000");
+    const collection = "0x0cedf6129f9a20109f0e0f043c1e01590a2d6ca6";
+
+    // designates the bot controller
+    const botController = testERC721Holder;
+
+    // deploy ClowderCalleeExample
+    const ClowderCalleeExample = await ethers.getContractFactory("ClowderCalleeExample");
+    const clowderCalleeExample = await ClowderCalleeExample.connect(botController).deploy(
+      clowderMain.address,
+      wethTokenContract.address,
+    );
+    await clowderCalleeExample.deployed();
+    console.log("ClowderCalleeExample deployed to:", clowderCalleeExample.address);
+
+    // calculate total price (contribution)
+    const contribution = value.add(value.mul(feeFraction).div(10_000));
+
+    // build and make the user sign the Clowder buy order
+    const myBuyOrder = {
+      signer: user.address,
+      collection,
+      executionId,
+      contribution,
+
+      buyPrice: contribution,
+      buyNonce: BigNumber.from(0),
+      buyPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
+
+      delegate: delegate.address,
+    };
+    const myBuyOrderSigned = await ClowderSignature.signBuyOrder(myBuyOrder,
+      eip712Domain,
+      user
+    );
+
+    // preparing instructions to be run in the callback
+    const ss = Weth9__factory.createInterface().encodeFunctionData("withdraw", [value]);
+    const instructions: { to: string, value: BigNumber, data: string }[] = [
+      // convert WETH to ETH
+      {
+        to: wethTokenContract.address,
+        value: BigNumber.from(0),
+        data: ss,
+      },
+      // buy the NFT
+      {
+        to: to,
+        value: value,
+        data: data,
+      },
+      // transfer the NFT to the delegate
+      {
+        to: collection,
+        value: BigNumber.from(0),
+        data: (ERC721__factory.createInterface() as any).encodeFunctionData("safeTransferFrom(address, address, uint256)", [clowderCalleeExample.address, delegate.address, tokenId]),
+      }
+    ];
+
+    console.log("encoding...");
+
+    // encode packed instructions together with the WETH receiver address
+    const instructionsData = AbiCoder.prototype.encode(
+      ["tuple(uint256 value, address to, bytes data)[]", "address"],
+      [instructions, botController.address],
+    );
+
+    console.log("executing on passive buy orders");
+
+    await clowderCalleeExample.connect(botController).execute([
+      myBuyOrderSigned,
+    ],
+      value,
+      tokenId,
+      instructionsData,
+    );
+
+  }).timeout(2 * 60 * 1000);
 
 })

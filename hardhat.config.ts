@@ -58,7 +58,7 @@ export function getChainRpcUrl(chain: keyof typeof chainIds): string {
   return jsonRpcUrl;
 }
 
-const forkForTesting: keyof typeof chainIds = 'mainnet';
+const forkForTesting: keyof typeof chainIds = 'polygon-mainnet';
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -71,7 +71,8 @@ const config: HardhatUserConfig = {
         enabled: true,
         runs: 200,
         // runs: 4294967295,
-      }
+      },
+      viaIR: true, // to avoid stack too deep errors
     },
   },
   // defaultNetwork: "hardhat", // default is hardhat
@@ -88,7 +89,7 @@ const config: HardhatUserConfig = {
       gasPrice: 16 * GWEI.toNumber(),
       verify: {
         etherscan: {
-          apiKey: process.env.ETHERSCAN_API_KEY ?? "",
+          apiKey: process.env.MAINNET_ETHERSCAN_API_KEY ?? "",
           apiUrl: "https://api.etherscan.io/",
         },
       }

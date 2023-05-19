@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity >=0.8.4;
+pragma solidity >=0.8.13;
 
 // _________ .__                   .___
 // \_   ___ \|  |   ______  _  ____| _/___________
@@ -20,6 +20,7 @@ import {SignatureUtil} from "./libraries/SignatureUtil.sol";
 // import {OpenSeaUtil} from "./libraries/externalmarketplaces/OpenSeaUtil.sol";
 // import {LooksRareUtil} from "./libraries/externalmarketplaces/LooksRareUtil.sol";
 import {NftCollectionFunctions} from "./libraries/NftCollection.sol";
+import {IClowderCallee} from "./interfaces/IClowderCallee.sol";
 
 contract ClowderMainOwnable is Ownable {
     address public protocolFeeReceiver;
@@ -29,10 +30,9 @@ contract ClowderMainOwnable is Ownable {
      * @notice [onlyOwner] Change the protocol fee receiver
      * @param _protocolFeeReceiver new receiver
      */
-    function changeProtocolFeeReceiver(address _protocolFeeReceiver)
-        external
-        onlyOwner
-    {
+    function changeProtocolFeeReceiver(
+        address _protocolFeeReceiver
+    ) external onlyOwner {
         protocolFeeReceiver = _protocolFeeReceiver;
     }
 
@@ -40,18 +40,14 @@ contract ClowderMainOwnable is Ownable {
      * @notice [onlyOwner] Change the protocol fee fraction
      * @param _protocolFeeFraction new fee fraction (out of 10_000)
      */
-    function changeProtocolFeeFraction(uint256 _protocolFeeFraction)
-        external
-        onlyOwner
-    {
+    function changeProtocolFeeFraction(
+        uint256 _protocolFeeFraction
+    ) external onlyOwner {
         protocolFeeFraction = _protocolFeeFraction;
     }
 }
 
-contract ClowderMain is
-    ClowderMainOwnable,
-    ReentrancyGuard
-{
+contract ClowderMain is ClowderMainOwnable, ReentrancyGuard {
     address public immutable WETH;
     bytes32 public immutable EIP712_DOMAIN_SEPARATOR;
 
@@ -100,22 +96,21 @@ contract ClowderMain is
     function executeOnPassiveBuyOrders(
         BuyOrderV1[] calldata buyOrders,
         uint256 executorPrice,
-        uint256 tokenId
+        uint256 tokenId,
+        bytes calldata data
     ) external nonReentrant {
         require(buyOrders.length > 0, "Execute: Must have at least one order");
 
         uint256 protocolFee = (protocolFeeFraction * executorPrice) / 10_000;
         uint256 price = executorPrice + protocolFee;
-        address collection = buyOrders[0].collection;
-        uint256 executionId = buyOrders[0].executionId;
 
         require(
-            executions[executionId].collection == address(0),
+            executions[buyOrders[0].executionId].collection == address(0),
             "Execute: Id already executed"
         );
         // creating the execution object immediately (extra measure to prevent reentrancy)
-        executions[executionId] = Execution({
-            collection: collection,
+        executions[buyOrders[0].executionId] = Execution({
+            collection: buyOrders[0].collection,
             buyPrice: price,
             tokenId: tokenId
         });
@@ -125,7 +120,7 @@ contract ClowderMain is
 
         // TODO: maybe group contributions by signer
         // so that we save gas by doing only one or two transfers per signer
-        // Possibly recieve the data grouped from outside blockchain to 
+        // Possibly recieve the data grouped from outside blockchain to
         // save gas on the grouping.
 
         // validate and process all the buy orders
@@ -143,10 +138,9 @@ contract ClowderMain is
             // probably you can check the signer/nonces before "i".
             isUsedBuyNonce[order.signer][order.buyNonce] = true;
             // Validate order signature
-            bytes32 orderHash = order.hash();
             require(
                 SignatureUtil.verify(
-                    orderHash,
+                    order.hash(),
                     order.signer,
                     order.v,
                     order.r,
@@ -162,17 +156,17 @@ contract ClowderMain is
             require(order.canAcceptBuyPrice(price), "Order can't accept price");
             // Validate collection
             require(
-                order.collection == collection,
+                order.collection == buyOrders[0].collection,
                 "Order collection mismatch"
             );
             // Validate executionId
             require(
-                order.executionId == executionId,
+                order.executionId == buyOrders[0].executionId,
                 "Order executionId mismatch"
             );
             // Validate delegate
             require(
-                order.delegate == buyOrders[0].delegate, 
+                order.delegate == buyOrders[0].delegate,
                 "Order delegate mismatch"
             );
 
@@ -199,7 +193,9 @@ contract ClowderMain is
             _safeTransferWETH(order.signer, msg.sender, executorPriceAmount);
 
             // adding to the real contribution of the signer
-            realContributions[order.signer][executionId] += protocolWethAmount + executorPriceAmount;
+            realContributions[order.signer][buyOrders[0].executionId] +=
+                protocolWethAmount +
+                executorPriceAmount;
         } // ends the orders for loop
 
         // validating that we transferred the correct amounts of WETH
@@ -212,13 +208,27 @@ contract ClowderMain is
             "Executor price not transferred correctly"
         );
 
-        // transferring the NFT
-        NftCollectionFunctions.transferNft(
-            collection,
-            msg.sender,
-            buyOrders[0].delegate,
-            tokenId
-        );
+        if (data.length > 0) {
+
+            IClowderCallee(msg.sender).clowderCall(data);
+
+            // make sure the delegate is the owner of the NFT
+            require(
+                NftCollectionFunctions.ownerOf(
+                    buyOrders[0].collection,
+                    tokenId
+                ) == buyOrders[0].delegate,
+                "Delegate is not the owner of the NFT"
+            );
+        } else {
+            // transferring the NFT
+            NftCollectionFunctions.transferNft(
+                buyOrders[0].collection,
+                msg.sender,
+                buyOrders[0].delegate,
+                tokenId
+            );
+        }
     }
 
     function _safeTransferWETH(
