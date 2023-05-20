@@ -42,5 +42,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment,) {
 
   console.log("Deployed ClowderMain at " + clowderMain.address + " 🎉");
 
+
+  console.log("Deploying FlashBuyer to network " + chainId + " ⚡️");
+
+  const clowderFlashbuyer = await deploy("ClowderCalleeExample", {
+    from: deployer,
+    args: [clowderMain.address, WETH_ADDRESS[Number(chainId)]],
+  });
+
+  console.log("Deployed FlashBuyer at " + clowderFlashbuyer.address + " 🎉");
+
 };
 export default func;

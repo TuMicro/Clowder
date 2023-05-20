@@ -12,7 +12,7 @@ import { GWEI } from "./test/constants/ether";
 
 // tasks
 // import "./tasks/execute_buy";
-// import "./tasks/deployments";
+import "./tasks/deployments";
 // import "./tasks/list_on_opensea";
 // import "./tasks/get_execution";
 // import "./tasks/list_on_looksrare";
