@@ -272,7 +272,7 @@ describe.only("Execution functions", () => {
   }).timeout(2 * 60 * 1000);
 
 
-  it.only("Must be able to flashbuy an NFT", async () => {
+  it("Must be able to flashbuy an NFT", async () => {
 
     // get hre and change network to mainnet
     await network.provider.request({
