@@ -9,12 +9,13 @@ import { getBuyExecutionPriceFromPrice } from "./utils";
 import { deployDelegate } from "./deploydelegate";
 import { ERC721, ERC721__factory, SeaportInterface__factory, TraderClowderDelegateV1 } from "../../typechain-types";
 import { OpenSeaSeaportConstants } from "../constants/seaport";
-import { ZERO_ADDRESS } from "../../src/constants/zero";
+import { ZERO_ADDRESS, ZERO_BYTES32 } from "../../src/constants/zero";
 import { ReservoirOracleFloorAsk, fetchOracleFloorAsk } from "../../src/api/reservoir-oracle-floor-ask";
 import { TraderClowderDelegateSignature } from "./delegatesignature";
 import { getChainRpcUrl } from "../../hardhat.config";
 import { impersonateAccount } from "../hardhat-util";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { expect } from "chai";
 
 describe("Delegate", () => {
 
@@ -162,13 +163,53 @@ describe("Delegate", () => {
       [sellOrderSigned],
       floorAsk.message,
     );
+    const listingReceipt = await txn.wait();
+    // get block timestamp of listingReceipt.blockHash
+    const block = await ethers.provider.getBlock(listingReceipt.blockHash);
+    const blockTimestamp = block.timestamp;
 
-    // TODO: make sure we can buy the NFT on seaport
-    // const seaport = SeaportInterface__factory.connect(OpenSeaSeaportConstants.SEAPORT_ADDRESS_1_5,
-    //   ethers.provider);
-    // const seaportBuyTxn = await seaport.connect(wethHolder).fulfillOrder(
+    // make sure we can buy the NFT on seaport
+    const seaport = SeaportInterface__factory.connect(sellOrder.seaport,
+      ethers.provider);
+    const ethPrice = ETHER.mul(30);
+    // helpful for an error I was having: https://openchain.xyz/signatures?query=0xa61be9f0
+    const seaportBuyTxn = await seaport.connect(wethHolder).fulfillBasicOrder(
+      {
+        basicOrderType: 0, // ETH_TO_ERC721_FULL_OPEN
 
-    // )
+        considerationToken: ZERO_ADDRESS,
+        considerationIdentifier: 0,
+        considerationAmount: ethPrice,
+
+        offerer: traderClowderDelegateV1.address,
+        offerToken: erc721Contract.address,
+        offerIdentifier: BigNumber.from(erc721TokenId),
+        offerAmount: 1,
+
+        startTime: blockTimestamp,
+        endTime: sellOrder.endTime,
+
+        zone: sellOrder.zone,
+        zoneHash: ZERO_BYTES32,
+
+        salt: BigNumber.from(0),
+
+        offererConduitKey: sellOrder.conduitKey,
+        fulfillerConduitKey: sellOrder.conduitKey,
+
+        totalOriginalAdditionalRecipients: 0,
+
+        additionalRecipients: [],
+
+        signature: [],
+      }, {
+      value: ethPrice,
+    }
+    );
+
+    // make sure wethHolder has the NFT
+    const ownerOf = await erc721Contract.ownerOf(erc721TokenId);
+    expect(ownerOf).to.equal(wethHolder.address);
 
   });
 });

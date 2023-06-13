@@ -389,6 +389,9 @@ describe("Execution functions", () => {
       instructionsData,
     );
 
+    // make sure the delegate has the NFT
+    expect(await ERC721__factory.connect(collection, ethers.provider).ownerOf(tokenId)).to.equal(delegate.address);
+
   }).timeout(2 * 60 * 1000);
 
 })
