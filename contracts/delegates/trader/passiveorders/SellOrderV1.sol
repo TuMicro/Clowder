@@ -46,7 +46,28 @@ struct SellOrderV1 {
 }
 
 library SellOrderV1Functions {
-    bytes32 internal constant PASSIVE_SELL_ORDER_HASH = 0x0; // TODO: set this
+    
+    bytes32 internal constant SELLORDERV1_HASH = 0xa3caa541092a3d5698833496cbe4e751314b1700a1e16573464568ddd42cf878;
+    bytes32 internal constant FEERECIPIENT_HASH = 0x65dcc86330d33f10b5643e98b00f9531f20a4af211fdfcb93f6e7813ff96ac5e;
+
+    function hashFeeRecipient(FeeRecipient memory feeRecipient) internal pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    FEERECIPIENT_HASH,
+                    feeRecipient.amount,
+                    feeRecipient.recipient
+                )
+            );
+    }
+
+    function hashFeeRecipients(FeeRecipient[] memory feeRecipients) internal pure returns (bytes32) {
+        bytes32[] memory feeRecipientHashes = new bytes32[](feeRecipients.length);
+        for (uint256 i = 0; i < feeRecipients.length; i++) {
+            feeRecipientHashes[i] = hashFeeRecipient(feeRecipients[i]);
+        }
+        return keccak256(abi.encodePacked(feeRecipientHashes));
+    }
 
     function hash(
         SellOrderV1 memory passiveOrder
@@ -54,13 +75,18 @@ library SellOrderV1Functions {
         return
             keccak256(
                 abi.encode(
-                    PASSIVE_SELL_ORDER_HASH,
+                    SELLORDERV1_HASH,
                     passiveOrder.signer,
                     passiveOrder.collection,
                     passiveOrder.tokenId,
                     passiveOrder.minNetProceeds,
                     passiveOrder.endTime,
-                    passiveOrder.nonce
+                    passiveOrder.nonce,
+                    hashFeeRecipients(passiveOrder.feeRecipients),
+                    passiveOrder.seaport,
+                    passiveOrder.conduitController,
+                    passiveOrder.conduitKey,
+                    passiveOrder.zone
                 )
             );
     }
@@ -95,13 +121,8 @@ library SellOrderV1Functions {
         mapping(address => mapping(uint256 => bool)) storage _isUsedSellNonce,
         ClowderMain clowderMain,
         SellOrderV1[] calldata orders,
-        uint256 executionId,
-        uint256 fairPrice,
-        uint256 minConsensusForSellingOverFairPrice,
-        uint256 minConsensusForSellingUnderOrEqualFairPrice
-    ) public view returns (uint256, uint256) {
-
-        (, uint256 buyPrice, ) = clowderMain.executions(executionId);
+        uint256 executionId
+    ) public view returns (uint256, uint256, uint256) {
 
         uint256 minExpirationTime = type(uint256).max;
         uint256 maxOfMinProceeds = 0;
@@ -193,32 +214,6 @@ library SellOrderV1Functions {
                 executionId);
         } // ends the voters for loop
 
-        // Validating price consensus
-        if (maxOfMinProceeds > fairPrice) {
-            if (minConsensusForSellingOverFairPrice == 10_000) {
-                // we need 10_000 out of 10_000 consensus
-                require(
-                    realContributionOnBoard == buyPrice,
-                    "Selling over fairPrice: consensus not reached"
-                );
-            } else {
-                // we need more than N out of 10_000 consensus
-                require(
-                    realContributionOnBoard * 10_000 >
-                        buyPrice * minConsensusForSellingOverFairPrice,
-                    "Selling over fairPrice: consensus not reached"
-                );
-            }
-        } else {
-            // we need a different consensus ratio
-            require(
-                realContributionOnBoard * 10_000 >=
-                    buyPrice *
-                        minConsensusForSellingUnderOrEqualFairPrice,
-                "Selling u/e fairPrice: consensus not reached"
-            );
-        }
-
-        return (minExpirationTime, maxOfMinProceeds);
+        return (minExpirationTime, maxOfMinProceeds, realContributionOnBoard);
     }
 }

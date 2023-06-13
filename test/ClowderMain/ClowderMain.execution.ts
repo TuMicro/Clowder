@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { BigNumber } from "ethers";
-import { deployForTests, DeployOutputs } from "./deploy";
+import { deployForTests, DeployOutputs } from "./deployclowdermain";
 import { ClowderSignature } from "./clowdersignature";
 import { ETHER, MAX_UINT256 } from "../constants/ether";
 import { getUnixTimestamp, ONE_DAY_IN_SECONDS } from "../constants/time";
@@ -75,7 +75,7 @@ export async function prepareForSingleBuySellTest(deployOutputs: DeployOutputs) 
   }
 }
 
-describe.only("Execution functions", () => {
+describe("Execution functions", () => {
   let deployOutputs: DeployOutputs;
 
   let buyOrder: BuyOrderV1Basic;

@@ -90,7 +90,8 @@ task("execute_buy", "Gets WETH, performs approvals and then performs a buy. "
     await clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
       [buyOrderSigned],
       executionPrice,
-      testERC721TokenId
+      testERC721TokenId,
+      [],
     );
 
     console.log("Buy order executed!");

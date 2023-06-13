@@ -1,10 +1,10 @@
 import { SignatureUtils } from "../signature";
-import { ClowderSignature } from "./clowdersignature";
+import { TraderClowderDelegateSignature } from "./delegatesignature";
 
 console.log("");
 // print current date and time
 console.log("Current date and time: " + new Date().toLocaleString());
-console.log("Computing BuyOrderV1 type hash...");
-const types = ClowderSignature.getBuyOrderV1Types();
+console.log("Computing SellOrderV1 type hash...");
+const types = TraderClowderDelegateSignature.getSellOrderV1Types();
 SignatureUtils.generateSignedDataStructTypeHash(types);
 console.log("");

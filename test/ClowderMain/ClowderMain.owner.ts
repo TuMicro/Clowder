@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import { deployForTests, DeployOutputs } from "./deploy";
+import { deployForTests, DeployOutputs } from "./deployclowdermain";
 
-describe.only("Owner functions", () => {
+describe("Owner functions", () => {
   let deployOutputs: DeployOutputs;
   before(async () => {
     deployOutputs = await deployForTests();
