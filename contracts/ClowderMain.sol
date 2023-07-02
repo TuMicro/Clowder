@@ -22,6 +22,11 @@ import {SignatureUtil} from "./libraries/SignatureUtil.sol";
 import {NftCollectionFunctions} from "./libraries/NftCollection.sol";
 import {IClowderCallee} from "./interfaces/IClowderCallee.sol";
 
+// TODO: remove when implementing the minimal proxy (factory)
+import {TraderClowderDelegateV1} from "./delegates/trader/TraderClowderDelegateV1.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+
+
 contract ClowderMainOwnable is Ownable {
     address public protocolFeeReceiver;
     uint256 public protocolFeeFraction = 100; // out of 10_000
@@ -118,10 +123,13 @@ contract ClowderMain is ClowderMainOwnable, ReentrancyGuard {
         uint256 protocolFeeTransferred = 0;
         uint256 executorPriceTransferred = 0;
 
-        // TODO: maybe group contributions by signer
-        // so that we save gas by doing only one or two transfers per signer
-        // Possibly recieve the data grouped from outside blockchain to
-        // save gas on the grouping.
+        // TODO: maybe save gas by tranferring weth only once per owner (signer)
+        // Possibly receive the data grouped from outside blockchain to
+        // save gas on the grouping?
+
+        address[] memory owners = new address[](buyOrders.length);
+        uint256[] memory contributions = new uint256[](buyOrders.length);
+        uint256 ownersLength = 0;
 
         // validate and process all the buy orders
         for (uint256 i = 0; i < buyOrders.length; i++) {
@@ -193,9 +201,22 @@ contract ClowderMain is ClowderMainOwnable, ReentrancyGuard {
             _safeTransferWETH(order.signer, msg.sender, executorPriceAmount);
 
             // adding to the real contribution of the signer
-            realContributions[order.signer][buyOrders[0].executionId] +=
-                protocolWethAmount +
+            uint256 realContribution = protocolWethAmount +
                 executorPriceAmount;
+            // check if exists on the owners array
+            bool exists = false;
+            for (uint256 j = 0; j < ownersLength; j++) {
+                if (owners[j] == order.signer) {
+                    contributions[j] += realContribution;
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                owners[ownersLength] = order.signer;
+                contributions[ownersLength] = realContribution;
+                ownersLength++;
+            }
         } // ends the orders for loop
 
         // validating that we transferred the correct amounts of WETH
@@ -208,6 +229,29 @@ contract ClowderMain is ClowderMainOwnable, ReentrancyGuard {
             "Executor price not transferred correctly"
         );
 
+        // getting the actual delegate
+        address actualDelegate = buyOrders[0].delegate;
+        // TODO: check if delegate is a clowder delegate factory
+        if (actualDelegate == address(0)) {
+            // for now just instantiate the trader clowder delegate here
+            // with some hardcoded values
+            actualDelegate = address(new TraderClowderDelegateV1(
+                address(this),
+                buyOrders[0].executionId,
+                0xAeB1D03929bF87F69888f381e73FBf75753d75AF, // TODO: get the RESERVOIR ADDRESS from the factory
+                0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE, // TODO: get the split main address from the factory
+                Strings.toString(buyOrders[0].executionId),
+                owners,
+                contributions,
+                price
+            ));
+        } else {
+            // otherwise we store the contributions in realContributions here
+            for (uint256 i = 0; i < owners.length; i++) {
+                realContributions[owners[i]][buyOrders[0].executionId] = contributions[i];
+            }
+        }
+
         if (data.length > 0) {
 
             IClowderCallee(msg.sender).clowderCall(data);
@@ -217,7 +261,7 @@ contract ClowderMain is ClowderMainOwnable, ReentrancyGuard {
                 NftCollectionFunctions.ownerOf(
                     buyOrders[0].collection,
                     tokenId
-                ) == buyOrders[0].delegate,
+                ) == actualDelegate,
                 "Delegate is not the owner of the NFT"
             );
         } else {
@@ -225,7 +269,7 @@ contract ClowderMain is ClowderMainOwnable, ReentrancyGuard {
             NftCollectionFunctions.transferNft(
                 buyOrders[0].collection,
                 msg.sender,
-                buyOrders[0].delegate,
+                actualDelegate,
                 tokenId
             );
         }

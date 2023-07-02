@@ -5,6 +5,7 @@ import {ClowderMain} from "../../../ClowderMain.sol";
 import {SignatureUtil} from "../../../libraries/SignatureUtil.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Execution} from "../../../libraries/execution/Execution.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 struct FeeRecipient {
     uint256 amount;
@@ -119,9 +120,8 @@ library SellOrderV1Functions {
 
     function validateSellOrdersParameters(
         mapping(address => mapping(uint256 => bool)) storage _isUsedSellNonce,
-        ClowderMain clowderMain,
-        SellOrderV1[] calldata orders,
-        uint256 executionId
+        IERC20 ownershipToken,
+        SellOrderV1[] calldata orders
     ) public view returns (uint256, uint256, uint256) {
 
         uint256 minExpirationTime = type(uint256).max;
@@ -209,9 +209,8 @@ library SellOrderV1Functions {
                 "Order nonce is unusable"
             );
             // counting the "votes" in favor of this price
-            realContributionOnBoard += clowderMain.realContributions(
-                order.signer,
-                executionId);
+            realContributionOnBoard += ownershipToken.balanceOf(order.signer);
+            
         } // ends the voters for loop
 
         return (minExpirationTime, maxOfMinProceeds, realContributionOnBoard);

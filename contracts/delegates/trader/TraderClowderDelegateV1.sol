@@ -7,13 +7,21 @@ import {SeaportUtil} from "./interactionutils/SeaportUtil.sol";
 import {Execution} from "../../libraries/execution/Execution.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {ReservoirOracle} from "./external/reservoiroracle/ReservoirOracle.sol";
+import {LiquidSplit} from "./external/liquidsplit/LiquidSplit.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract TraderClowderDelegateV1 is ReentrancyGuard, ReservoirOracle {
+contract TraderClowderDelegateV1 is
+    ReentrancyGuard,
+    ReservoirOracle,
+    LiquidSplit,
+    ERC20
+{
     // constants
+    uint256 public constant PERCENTAGE_SCALE_FOR_0XSPLITS = 1e6;
     uint256 public constant minConsensusForSellingOverFairPrice = 5_000; // out of 10_000
     uint256 public constant minConsensusForSellingUnderOrEqualFairPrice =
         10_000; // out of 10_000
-    uint256 public constant protocolFeeFractionFromSelling = 100; // out of 10_000, TODO: add this to the 0xsplit
+    uint32 public constant protocolFeeFractionFromSelling = 1e4; // out of PERCENTAGE_SCALE_FOR_0XSPLITS
 
     // immutable variables
     ClowderMain public immutable clowderMain;
@@ -27,8 +35,13 @@ contract TraderClowderDelegateV1 is ReentrancyGuard, ReservoirOracle {
     constructor(
         address _clowderMain,
         uint256 _executionId,
-        address _reservoirOracleAddress
-    ) {
+        address _reservoirOracleAddress,
+        address _splitMain,
+        string memory _name,
+        address[] memory accounts,
+        uint256[] memory contributions,
+        uint256 totalContributions
+    ) LiquidSplit(_splitMain) ERC20(_name, "COT") {
         clowderMain = ClowderMain(_clowderMain);
         executionId = _executionId;
         reservoirOracleAddress = _reservoirOracleAddress;
@@ -44,6 +57,28 @@ contract TraderClowderDelegateV1 is ReentrancyGuard, ReservoirOracle {
                 address(this)
             )
         );
+
+        // mint ERC20 tokens to each owner
+        uint256 accumulatedScaledToken = 0;
+        for (uint256 i = 0; i < accounts.length; i++) {
+            if (i != accounts.length - 1) {
+                // the total supply must be
+                // PERCENTAGE_SCALE_FOR_0XSPLITS
+                uint256 scaledToken = (contributions[i] * PERCENTAGE_SCALE_FOR_0XSPLITS) /
+                    totalContributions;
+                accumulatedScaledToken += scaledToken;
+                _mint(
+                    accounts[i],
+                    scaledToken
+                );
+            } else {
+                // last one
+                _mint(
+                    accounts[i],
+                    PERCENTAGE_SCALE_FOR_0XSPLITS - accumulatedScaledToken
+                );
+            }
+        }
     }
 
     // To be able to receive NFTs
@@ -91,9 +126,8 @@ contract TraderClowderDelegateV1 is ReentrancyGuard, ReservoirOracle {
             uint256 realContributionOnBoard
         ) = SellOrderV1Functions.validateSellOrdersParameters(
                 isUsedSellNonce,
-                clowderMain,
-                orders,
-                executionId
+                this,
+                orders
             );
 
         validatePriceConsensus(
@@ -124,21 +158,20 @@ contract TraderClowderDelegateV1 is ReentrancyGuard, ReservoirOracle {
         uint256 maxOfMinProceeds,
         uint256 realContributionOnBoard
     ) internal view {
-        (, uint256 buyPrice, ) = clowderMain.executions(executionId);
 
         // Validating price consensus
         if (maxOfMinProceeds > fairPrice) {
             if (minConsensusForSellingOverFairPrice == 10_000) {
                 // we need 10_000 out of 10_000 consensus
                 require(
-                    realContributionOnBoard == buyPrice,
+                    realContributionOnBoard == totalSupply(),
                     "Selling over fairPrice: consensus not reached"
                 );
             } else {
                 // we need more than N out of 10_000 consensus
                 require(
                     realContributionOnBoard * 10_000 >
-                        buyPrice * minConsensusForSellingOverFairPrice,
+                        totalSupply() * minConsensusForSellingOverFairPrice,
                     "Selling over fairPrice: consensus not reached"
                 );
             }
@@ -146,7 +179,7 @@ contract TraderClowderDelegateV1 is ReentrancyGuard, ReservoirOracle {
             // we need a different consensus ratio
             require(
                 realContributionOnBoard * 10_000 >=
-                    buyPrice * minConsensusForSellingUnderOrEqualFairPrice,
+                    totalSupply() * minConsensusForSellingUnderOrEqualFairPrice,
                 "Selling u/e fairPrice: consensus not reached"
             );
         }
@@ -187,5 +220,23 @@ contract TraderClowderDelegateV1 is ReentrancyGuard, ReservoirOracle {
         );
 
         return price;
+    }
+
+    function distributorFee() public pure override returns (uint32) {
+        return protocolFeeFractionFromSelling;
+    }
+
+    function distributorAddress() public view override returns (address) {
+        return clowderMain.protocolFeeReceiver();
+    }
+
+    function scaledPercentBalanceOf(
+        address account
+    ) public view override returns (uint32) {
+        return uint32(balanceOf(account));
+    }
+
+    function decimals() public pure override returns (uint8) {
+        return 4;
     }
 }

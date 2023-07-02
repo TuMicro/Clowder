@@ -7,9 +7,8 @@ import { getUnixTimestamp, ONE_DAY_IN_SECONDS } from "../constants/time";
 import { BuyOrderV1, BuyOrderV1Basic } from "./model";
 import { ethers, network } from "hardhat";
 import { getChainRpcUrl } from "../../hardhat.config";
-import { ClowderCalleeExample__factory, ERC721__factory, Weth9__factory } from "../../typechain-types";
+import { ERC721__factory, Weth9__factory } from "../../typechain-types";
 import { AbiCoder } from "ethers/lib/utils";
-import { WETH_ADDRESS, WMATIC_ADDRESS_POLYGON } from "./addresses";
 
 export async function prepareForSingleBuySellTest(deployOutputs: DeployOutputs) {
   const { clowderMain, thirdParty, eip712Domain, feeFraction,
@@ -216,7 +215,10 @@ describe("Execution functions", () => {
         true,
       );
 
-      const signers = (await ethers.getSigners()).slice(0, n_buyers);
+      const allSigners = await ethers.getSigners();
+      console.log("allSigners.length: " + allSigners.length);
+
+      const signers = allSigners.slice(10, 10 + n_buyers);
       const orderBuyPrice = ETHER.mul(10);
       const contribution = orderBuyPrice.div(n_buyers).add(1); // +1 wei for rounding error
       const buyNonce = BigNumber.from(0);
@@ -253,6 +255,10 @@ describe("Execution functions", () => {
       // when reviewing this code I don't understand why I added 1 here on the first place
       const buyExecutionPrice = orderBuyPrice.mul(10_000).div(feeFraction.add(10_000)).add(1);
 
+      // getting weth balances before
+      const signersBalances = await Promise.all(signers.map(s => wethTokenContract.balanceOf(s.address)));
+
+      // executing
       const txn = await clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
         orders,
         buyExecutionPrice,
@@ -263,11 +269,21 @@ describe("Execution functions", () => {
       // print gas used
       console.log(`Gas used for ${n_buyers} buyers buy execution: ${receipt.gasUsed.toString()}`);
 
-      // testing delegate owns the NFT
+      // making sure delegate owns the NFT
       expect(await testERC721.ownerOf(testERC721TokenId)).to.eq(delegate.address);
 
-      // testing delegate can transfer the NFT
+      // making sure delegate can transfer the NFT
       await testERC721.connect(delegate).transferFrom(delegate.address, owner.address, testERC721TokenId);
+
+      // getting weth balances after
+      const signersBalancesAfter = await Promise.all(signers.map(s => wethTokenContract.balanceOf(s.address)));
+      // calculating real contributions
+      const realContributions = signersBalances.map((balanceBefore, i) => balanceBefore.sub(signersBalancesAfter[i]));
+      // making sure realContributions were stored correctly
+      for (let i = 0; i < signers.length; i++) {
+        expect((await clowderMain.realContributions(signers[i].address, executionId)).eq(realContributions[i])).to.be.true;
+      }
+
     }
   }).timeout(2 * 60 * 1000);
 
