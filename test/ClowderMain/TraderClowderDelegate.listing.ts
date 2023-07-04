@@ -7,7 +7,7 @@ import { DeployOutputs, deployForTests } from "./deployclowdermain";
 import { BuyOrderV1, BuyOrderV1Basic, SellOrderV1Basic } from "./model";
 import { getBuyExecutionPriceFromPrice } from "./utils";
 import { deployDelegate } from "./deploydelegate";
-import { ERC721, ERC721__factory, SeaportInterface__factory, TraderClowderDelegateV1 } from "../../typechain-types";
+import { ERC721, ERC721__factory, SeaportInterface__factory, TraderClowderDelegateV1, TraderClowderDelegateV1__factory } from "../../typechain-types";
 import { OpenSeaSeaportConstants } from "../constants/seaport";
 import { ZERO_ADDRESS, ZERO_BYTES32 } from "../../src/constants/zero";
 import { ReservoirOracleFloorAsk, fetchOracleFloorAsk } from "../../src/api/reservoir-oracle-floor-ask";
@@ -59,11 +59,19 @@ describe("Delegate", () => {
       wethTokenContract, wethHolder,
       owner } = deployOutputs;
 
-    traderClowderDelegateV1 = await deployDelegate(
-      clowderMain.address,
-      executionId,
-      "0xAeB1D03929bF87F69888f381e73FBf75753d75AF" // reservoir oracle signer address
-    );
+    // traderClowderDelegateV1 = await deployDelegate(
+    //   clowderMain.address,
+    //   executionId,
+    //   "0xAeB1D03929bF87F69888f381e73FBf75753d75AF" // reservoir oracle signer address
+    // );
+    // TODO: get the delegate address
+    const nonce = await ethers.provider.getTransactionCount(clowderMain.address);
+    const traderDelegateAddress = ethers.utils.getContractAddress({
+      from: clowderMain.address,
+      nonce: nonce,
+    });
+    traderClowderDelegateV1 = TraderClowderDelegateV1__factory.connect(traderDelegateAddress,
+      ethers.provider);
 
     nftOwner = await impersonateAccount("0x45A2235b9027eaB23FfcF759c893763F0019cBff");
     erc721Contract = ERC721__factory.connect("0x220fa5ccc9404802ed6db0935eb4feefc27c937e",
@@ -91,7 +99,7 @@ describe("Delegate", () => {
       buyNonce: BigNumber.from(0),
       buyPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
 
-      delegate: traderClowderDelegateV1.address,
+      delegate: ZERO_ADDRESS, // TODO: change when we move to minimal proxy
     };
     buyOrderSigned = await ClowderSignature.signBuyOrder(buyOrder,
       eip712Domain,
@@ -111,7 +119,7 @@ describe("Delegate", () => {
     );
     const executionPrice = getBuyExecutionPriceFromPrice(contribution, feeFraction);
     await clowderMain.connect(nftOwner).executeOnPassiveBuyOrders(
-      [buyOrderSigned],
+      [buyOrderSigned,],
       executionPrice,
       erc721TokenId,
       [],
@@ -123,7 +131,7 @@ describe("Delegate", () => {
   it("Must list on Seaport", async () => {
     const { thirdParty,
       wethTokenContract, wethHolder,
-      owner } = deployOutputs;
+      owner : owner2 } = deployOutputs;
 
     // build and sign the order
     const sellOrder: SellOrderV1Basic = {
@@ -210,6 +218,24 @@ describe("Delegate", () => {
     // make sure wethHolder has the NFT
     const ownerOf = await erc721Contract.ownerOf(erc721TokenId);
     expect(ownerOf).to.equal(wethHolder.address);
+
+    const initialSharesOfThirdParty = await traderClowderDelegateV1.balanceOf(thirdParty.address);
+    const totalShares = await traderClowderDelegateV1.totalSupply();
+    expect(initialSharesOfThirdParty.eq(totalShares)).to.be.true;
+
+    // now thirdParty transfers ~50% of the shares to owner2
+    await traderClowderDelegateV1.connect(thirdParty).transfer(owner2.address, initialSharesOfThirdParty.div(3));
+    const newSharesOfThirdParty = await traderClowderDelegateV1.balanceOf(thirdParty.address);
+    await traderClowderDelegateV1.connect(thirdParty).distributeFunds(ZERO_ADDRESS, 
+      [thirdParty.address, owner2.address]);
+    const splitId = await traderClowderDelegateV1.payoutSplit();
+    // TODO: make sure they get the correct funds on their 0xsplit accounts
+    // Use getUserEarnings() to get the amount of ETH they should have gotten
+    // https://docs.0xsplits.xyz/sdk/splits#getUserEarnings
+    // don't forget that Clowder takes 1% of the proceedings (so Clowder should get 0.3 ETH)
+    // Params for 0xsplits:
+    // chainId is already above
+    // provider: ethers.provider
 
   });
 });

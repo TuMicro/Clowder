@@ -8,6 +8,7 @@ import { WETH9_ABI } from "../constants/erc20abi";
 import { ETHER } from "../constants/ether";
 import { WETH_ADDRESS } from "./addresses";
 import { ClowderSignature } from "./clowdersignature";
+import { deployDelegateLibraries } from "./deploydelegate";
 
 export const DEFAULT_FEE_FRACTION = BigNumber.from(1); // out of 10k
 
@@ -51,11 +52,18 @@ export async function deployForTests(customWethAddress: string | null = null): P
   // const LooksRareUtilLibrary = await LooksRareUtilFactory.deploy()
   // await LooksRareUtilLibrary.deployed();
 
+  // TODO: remove this when moving to minimal proxy
+  const {seaportUtil, sellOrderV1FunctionsLibrary} = await deployDelegateLibraries();
+
   const clowderMainFactory = await ethers.getContractFactory('ClowderMain', {
     libraries: {
       // 'BuyOrderV1Functions': buyOrderV1FunctionsLibrary.address,
       // 'OpenSeaUtil': OpenSeaUtilLibrary.address,
       // 'LooksRareUtil': LooksRareUtilLibrary.address,
+
+        // TODO: remove this when moving to minimal proxy
+      'SeaportUtil': seaportUtil.address,
+      'SellOrderV1Functions': sellOrderV1FunctionsLibrary.address,
     }
   });
 
