@@ -7,7 +7,7 @@ import { DeployOutputs, deployForTests } from "./deployclowdermain";
 import { BuyOrderV1, BuyOrderV1Basic, SellOrderV1Basic } from "./model";
 import { getBuyExecutionPriceFromPrice } from "./utils";
 import { deployDelegate } from "./deploydelegate";
-import { ERC721, ERC721__factory, SeaportInterface__factory, TraderClowderDelegateV1, TraderClowderDelegateV1__factory } from "../../typechain-types";
+import { ERC721, ERC721__factory, SeaportInterface__factory, TraderClowderDelegateV1, TraderClowderDelegateV1__factory, XSplitMain__factory } from "../../typechain-types";
 import { OpenSeaSeaportConstants } from "../constants/seaport";
 import { ZERO_ADDRESS, ZERO_BYTES32 } from "../../src/constants/zero";
 import { ReservoirOracleFloorAsk, fetchOracleFloorAsk } from "../../src/api/reservoir-oracle-floor-ask";
@@ -16,8 +16,11 @@ import { getChainRpcUrl } from "../../hardhat.config";
 import { impersonateAccount } from "../hardhat-util";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
+import { SplitsClient } from '@0xsplits/splits-sdk'
+import { SplitMain } from "@0xsplits/splits-sdk/dist/typechain/SplitMain/ethereum";
+import { formatEther } from "ethers/lib/utils";
 
-describe("Delegate", () => {
+describe.only("Delegate", () => {
 
   let deployOutputs: DeployOutputs;
   let buyOrderSigned: BuyOrderV1;
@@ -131,7 +134,7 @@ describe("Delegate", () => {
   it("Must list on Seaport", async () => {
     const { thirdParty,
       wethTokenContract, wethHolder,
-      owner : owner2 } = deployOutputs;
+      owner: owner2 } = deployOutputs;
 
     // build and sign the order
     const sellOrder: SellOrderV1Basic = {
@@ -222,13 +225,25 @@ describe("Delegate", () => {
     const initialSharesOfThirdParty = await traderClowderDelegateV1.balanceOf(thirdParty.address);
     const totalShares = await traderClowderDelegateV1.totalSupply();
     expect(initialSharesOfThirdParty.eq(totalShares)).to.be.true;
+    console.log("totalShares", totalShares);
 
     // now thirdParty transfers ~50% of the shares to owner2
     await traderClowderDelegateV1.connect(thirdParty).transfer(owner2.address, initialSharesOfThirdParty.div(3));
     const newSharesOfThirdParty = await traderClowderDelegateV1.balanceOf(thirdParty.address);
-    await traderClowderDelegateV1.connect(thirdParty).distributeFunds(ZERO_ADDRESS, 
+    console.log("newSharesOfThirdParty", newSharesOfThirdParty);
+
+    const newSharesOwner2 = await traderClowderDelegateV1.balanceOf(owner2.address);
+    console.log("newSharesOwner2", newSharesOwner2);
+
+    await traderClowderDelegateV1.connect(thirdParty).distributeFunds(ZERO_ADDRESS,
       [thirdParty.address, owner2.address]);
+
+    console.log("thirdParty.address:", thirdParty.address);
+    console.log("owner2.address:", owner2.address);
     const splitId = await traderClowderDelegateV1.payoutSplit();
+
+    console.log("splitId", splitId);
+
     // TODO: make sure they get the correct funds on their 0xsplit accounts
     // Use getUserEarnings() to get the amount of ETH they should have gotten
     // https://docs.0xsplits.xyz/sdk/splits#getUserEarnings
@@ -236,6 +251,54 @@ describe("Delegate", () => {
     // Params for 0xsplits:
     // chainId is already above
     // provider: ethers.provider
+
+    const ID = "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE";
+    const xSplit = XSplitMain__factory.connect(ID,
+      ethers.provider);
+
+    const thirdPartyBalance = await xSplit.getETHBalance(thirdParty.address);
+    console.log("thirdPartyBalance", formatEther(thirdPartyBalance));
+    const owner2Balance = await xSplit.getETHBalance(owner2.address);
+    console.log("owner2Balance", formatEther(owner2Balance));
+    const sumBalances = owner2Balance.add(thirdPartyBalance);
+    console.log("sumBalances", formatEther(sumBalances));
+    const feeClowder = ethPrice.sub(sumBalances);
+    console.log("feeClowder", formatEther(feeClowder));
+    const protocolFeeM = await traderClowderDelegateV1.protocolFeeFractionFromSelling();
+    const protocolFee = ethPrice.mul(protocolFeeM).div(1e6);
+    expect(protocolFee.eq(feeClowder)).to.be.true;
+
+    // const splitsClient = new SplitsClient({
+    //   chainId,
+    //   provider: ethers.provider, // ethers provider (optional, required if using any of the SplitMain functions)
+    //   //signer, // ethers signer (optional, required if using the SplitMain write functions)
+    //   //includeEnsNames, // boolean, defaults to false. If true, will return ens names for split recipients (only for mainnet)
+    //   // If you want to return ens names on chains other than mainnet, you can pass in a mainnet provider
+    //   // here. Be aware though that the ens name may not necessarily resolve to the proper address on the
+    //   // other chain for non EOAs (e.g. Gnosis Safe's)
+    //   //ensProvider, // ethers provider (optional)
+    // });    
+
+    // const splitMetadata = await splitsClient.getSplitMetadata({
+    //   splitId: splitId,
+    // });
+    // console.log("splitMetadata", splitMetadata);
+
+    // const relatedSplits_60ca = await splitsClient.getRelatedSplits({
+    //   address: '0x930E443a3B79c1c96EB1869c5bE9Bc6cE89960ca',
+    // });
+    // //console.log("relatedSplits_60ca", relatedSplits_60ca);
+    // console.log("relatedSplits_60ca.receivingFrom[0]", relatedSplits_60ca.receivingFrom[0]);
+
+    // const relatedSplits_B65e = await splitsClient.getRelatedSplits({
+    //   address: '0x293F621079543b4ACd39Fab881cC494Ef0f6B65e',
+    // });
+    // console.log("relatedSplits_B65e.receivingFrom[0]", relatedSplits_B65e.receivingFrom[0]);
+
+    // const owner2UserEarning = await splitsClient.getUserEarnings({
+    //   userId: owner2.address,
+    // });
+    // console.log("owner2UserEarning", owner2UserEarning);    
 
   });
 });
