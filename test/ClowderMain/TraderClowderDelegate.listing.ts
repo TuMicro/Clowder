@@ -29,7 +29,7 @@ describe("Delegate", () => {
   let chainId: number;
 
   // execution parameters that should be accepted
-  const executionId = BigNumber.from(0);
+  const executionId = BigNumber.from(12);
 
   beforeEach(async () => {
 
@@ -126,6 +126,11 @@ describe("Delegate", () => {
     );
 
     traderDomain = TraderClowderDelegateSignature.getDomain(chainId, traderClowderDelegateV1.address);
+  });
+
+  it("Must have the correct name and symbol", async () => {
+    expect(await traderClowderDelegateV1.name()).to.be.eq(executionId.toString());
+    expect(await traderClowderDelegateV1.symbol()).to.be.eq("CDS");
   });
 
   it("Must list on Seaport", async () => {
