@@ -26,7 +26,7 @@ struct TransferOrderV1 {
     
     address signer; // order signer
 
-    // native token, ERC20, ERC721 or ERC1155
+    // asset information
     AssetType assetType; // uint8
     address token; // token address
     uint256 tokenId; // irrelevant for ERC20 or native tokens
