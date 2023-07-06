@@ -424,7 +424,7 @@ describe("Delegate", () => {
   });
 });
 
-describe.only("Delegate with two buyers", () => {
+describe("Delegate with two buyers", () => {
 
   let deployOutputs: DeployOutputs;
   let buyOrderSigned: BuyOrderV1;
