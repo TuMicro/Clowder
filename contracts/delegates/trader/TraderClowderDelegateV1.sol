@@ -105,6 +105,24 @@ contract TraderClowderDelegateV1 is
     ) external pure returns (bytes4) {
         return this.onERC721Received.selector;
     }
+    function onERC1155Received(
+        address operator,
+        address from,
+        uint256 id,
+        uint256 value,
+        bytes calldata data
+    ) external pure returns (bytes4) {
+        return this.onERC1155Received.selector;
+    }
+    function onERC1155BatchReceived(
+        address operator,
+        address from,
+        uint256[] calldata ids,
+        uint256[] calldata values,
+        bytes calldata data
+    ) external pure returns (bytes4) {
+        return this.onERC1155BatchReceived.selector;
+    }
 
     // to be able to receive eth
     receive() external payable {}
