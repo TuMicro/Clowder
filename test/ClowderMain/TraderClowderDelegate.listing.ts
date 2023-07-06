@@ -64,7 +64,6 @@ describe("Delegate", () => {
     //   executionId,
     //   "0xAeB1D03929bF87F69888f381e73FBf75753d75AF" // reservoir oracle signer address
     // );
-    // TODO: get the delegate address
     const nonce = await ethers.provider.getTransactionCount(clowderMain.address);
     const traderDelegateAddress = ethers.utils.getContractAddress({
       from: clowderMain.address,

@@ -9,6 +9,7 @@ import { ETHER } from "../constants/ether";
 import { WETH_ADDRESS } from "./addresses";
 import { ClowderSignature } from "./clowdersignature";
 import { deployDelegateLibraries } from "./deploydelegate";
+import { setEtherBalance } from "../hardhat-util";
 
 export const DEFAULT_FEE_FRACTION = BigNumber.from(1); // out of 10k
 
@@ -33,12 +34,12 @@ export interface DeployOutputs {
   wethTokenContract: Weth9;
   wethHolder: SignerWithAddress,
 
-  delegate: SignerWithAddress,
+  delegateEOA: SignerWithAddress,
 }
 
 export async function deployForTests(customWethAddress: string | null = null): Promise<DeployOutputs> {
   const [owner, nonOwner, thirdParty, feeReceiver, testERC721Owner,
-    testERC721Holder, wethHolder, delegate] = await ethers.getSigners();
+    testERC721Holder, wethHolder, delegateEOA] = await ethers.getSigners();
 
   // const buyOrderV1FunctionsFactory = await ethers.getContractFactory('BuyOrderV1Functions');
   // const buyOrderV1FunctionsLibrary = await buyOrderV1FunctionsFactory.deploy()
@@ -99,10 +100,7 @@ export async function deployForTests(customWethAddress: string | null = null): P
 
   // setting up the WETH contract and WETH holder
   const wethTokenContract = Weth9__factory.connect(wethAddress, ethers.provider);
-  await ethers.provider.send("hardhat_setBalance", [ // because eth balance is spent on tests
-    wethHolder.address,
-    hexStripZeros(ETHER.mul(10_000).toHexString()),
-  ]);
+  await setEtherBalance(wethHolder.address, ETHER.mul(10_000));  // because eth balance is spent on tests
   await wethTokenContract.connect(wethHolder).deposit({ // adding more WETH
     value: ETHER.mul(5_000),
   });
@@ -127,6 +125,6 @@ export async function deployForTests(customWethAddress: string | null = null): P
     wethTokenContract,
     wethHolder,
 
-    delegate,
+    delegateEOA,
   }
 }
