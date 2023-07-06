@@ -41,7 +41,9 @@ contract TraderClowderDelegateV1 is
         address[] memory accounts,
         uint256[] memory contributions,
         uint256 totalContributions
-    ) LiquidSplit(_splitMain) ERC20(_name, "COT") {
+    ) LiquidSplit(_splitMain) ERC20(_name, 
+        "CDS" // Clowder Delegate Shares
+    ) {
         clowderMain = ClowderMain(_clowderMain);
         executionId = _executionId;
         reservoirOracleAddress = _reservoirOracleAddress;

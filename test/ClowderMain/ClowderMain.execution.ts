@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { BigNumber } from "ethers";
+import { BigNumber, Wallet } from "ethers";
 import { deployForTests, DeployOutputs } from "./deployclowdermain";
 import { ClowderSignature } from "./clowdersignature";
 import { ETHER, MAX_UINT256 } from "../constants/ether";
@@ -7,13 +7,17 @@ import { getUnixTimestamp, ONE_DAY_IN_SECONDS } from "../constants/time";
 import { BuyOrderV1, BuyOrderV1Basic } from "./model";
 import { ethers, network } from "hardhat";
 import { getChainRpcUrl } from "../../hardhat.config";
-import { ERC721__factory, Weth9__factory } from "../../typechain-types";
+import { ERC721__factory, TraderClowderDelegateV1__factory, Weth9__factory } from "../../typechain-types";
 import { AbiCoder } from "ethers/lib/utils";
+import { ZERO_ADDRESS } from "../../src/constants/zero";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { setEtherBalance } from "../hardhat-util";
+import { TraderClowderDelegateSignature } from "./delegatesignature";
 
 export async function prepareForSingleBuySellTest(deployOutputs: DeployOutputs) {
   const { clowderMain, thirdParty, eip712Domain, feeFraction,
     testERC721, testERC721Holder, wethTokenContract, wethHolder,
-    delegate } = deployOutputs;
+    delegateEOA } = deployOutputs;
 
   const executionId = BigNumber.from(0);
   const executionPrice = ETHER.mul(10);
@@ -39,7 +43,7 @@ export async function prepareForSingleBuySellTest(deployOutputs: DeployOutputs) 
     buyNonce: BigNumber.from(0),
     buyPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
 
-    delegate: delegate.address,
+    delegate: delegateEOA.address,
   };
   const buyOrderSigned = await ClowderSignature.signBuyOrder(buyOrder,
     eip712Domain,
@@ -159,7 +163,7 @@ describe("Execution functions", () => {
   it("Must execute a buy order transferring the NFT and required amounts. Then NFT must belong to the delegate.", async () => {
     const { clowderMain, feeReceiver, owner,
       testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
-      wethHolder, eip712Domain, thirdParty, delegate } = deployOutputs;
+      wethHolder, eip712Domain, thirdParty, delegateEOA } = deployOutputs;
 
     const buyerWethBalanceBefore = await wethTokenContract.balanceOf(buyOrder.signer);
     const sellerWethBalanceBefore = await wethTokenContract.balanceOf(testERC721Holder.address);
@@ -194,20 +198,21 @@ describe("Execution functions", () => {
     )).to.be.revertedWith("Execute: Id already executed");
 
     // testing delegate owns the NFT
-    expect(await testERC721.ownerOf(testERC721TokenId)).to.eq(delegate.address);
+    expect(await testERC721.ownerOf(testERC721TokenId)).to.eq(delegateEOA.address);
 
     // testing delegate can transfer the NFT
-    await testERC721.connect(delegate).transferFrom(delegate.address, owner.address, testERC721TokenId);
+    await testERC721.connect(delegateEOA).transferFrom(delegateEOA.address, owner.address, testERC721TokenId);
 
     // testing now the owner owns the NFT
     expect(await testERC721.ownerOf(testERC721TokenId)).to.eq(owner.address);
   });
 
   it("Must allow groups of people to buy one NFT and then the delegate owns the NFT", async () => {
-    for (let n_buyers = 1; n_buyers <= 10; n_buyers++) {
+
+    async function testForNBuyers(signers: (SignerWithAddress | Wallet)[], useDelegateEOA = true) {
       const { clowderMain, feeFraction,
         testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
-        wethHolder, eip712Domain, owner, delegate } = await deployForTests();
+        wethHolder, eip712Domain, owner, delegateEOA } = await deployForTests();
 
       // approve the clowder contract to move nft holder's nfts
       await testERC721.connect(testERC721Holder).setApprovalForAll(
@@ -215,14 +220,15 @@ describe("Execution functions", () => {
         true,
       );
 
-      const allSigners = await ethers.getSigners();
-      console.log("allSigners.length: " + allSigners.length);
+      const n_buyers = signers.length;
 
-      const signers = allSigners.slice(10, 10 + n_buyers);
       const orderBuyPrice = ETHER.mul(10);
       const contribution = orderBuyPrice.div(n_buyers).add(1); // +1 wei for rounding error
       const buyNonce = BigNumber.from(0);
       const orders = await Promise.all(signers.map(async (signer) => {
+
+        await setEtherBalance(signer.address, contribution.mul(2));
+
         // getting the WETH
         await wethTokenContract.connect(signer).deposit({
           value: contribution
@@ -243,7 +249,7 @@ describe("Execution functions", () => {
           buyNonce,
           buyPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
 
-          delegate: delegate.address,
+          delegate: useDelegateEOA ? delegateEOA.address : ZERO_ADDRESS,
         };
         const orderSigned = await ClowderSignature.signBuyOrder(order,
           eip712Domain,
@@ -258,6 +264,15 @@ describe("Execution functions", () => {
       // getting weth balances before
       const signersBalances = await Promise.all(signers.map(s => wethTokenContract.balanceOf(s.address)));
 
+      let traderDelegateAddress: string | null = null;
+      if (!useDelegateEOA) {
+        const nonce = await ethers.provider.getTransactionCount(clowderMain.address);
+        traderDelegateAddress = ethers.utils.getContractAddress({
+          from: clowderMain.address,
+          nonce: nonce,
+        });
+      }
+
       // executing
       const txn = await clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
         orders,
@@ -270,22 +285,67 @@ describe("Execution functions", () => {
       console.log(`Gas used for ${n_buyers} buyers buy execution: ${receipt.gasUsed.toString()}`);
 
       // making sure delegate owns the NFT
-      expect(await testERC721.ownerOf(testERC721TokenId)).to.eq(delegate.address);
+      if (useDelegateEOA) {
+        expect(await testERC721.ownerOf(testERC721TokenId)).to.eq(delegateEOA.address);
+      } else {
+        expect(await testERC721.ownerOf(testERC721TokenId)).to.eq(traderDelegateAddress);
+      }
 
-      // making sure delegate can transfer the NFT
-      await testERC721.connect(delegate).transferFrom(delegate.address, owner.address, testERC721TokenId);
+      // making sure delegate can transfer the NFT or at least owns it
+      if (useDelegateEOA) {
+        await testERC721.connect(delegateEOA).transferFrom(delegateEOA.address, owner.address, testERC721TokenId);
+      }
 
       // getting weth balances after
       const signersBalancesAfter = await Promise.all(signers.map(s => wethTokenContract.balanceOf(s.address)));
       // calculating real contributions
       const realContributions = signersBalances.map((balanceBefore, i) => balanceBefore.sub(signersBalancesAfter[i]));
+
+      return {
+        signers, realContributions, clowderMain, executionGasUsed: receipt.gasUsed,
+        delegateUsed: useDelegateEOA ? delegateEOA.address : traderDelegateAddress!
+      };
+    }
+
+    for (let n_buyers = 1; n_buyers <= 10; n_buyers++) {
+
+      const allSigners = await ethers.getSigners();
+      console.log("allSigners.length: " + allSigners.length);
+
+      const signers = allSigners.slice(10, 10 + n_buyers);
+
+      const { clowderMain, realContributions } = await testForNBuyers(signers);
+
       // making sure realContributions were stored correctly
       for (let i = 0; i < signers.length; i++) {
         expect((await clowderMain.realContributions(signers[i].address, executionId)).eq(realContributions[i])).to.be.true;
       }
-
     }
-  }).timeout(2 * 60 * 1000);
+
+
+    // now using the smart contract delegate
+    // generate integers from 1 to 10 in a list
+    const n_buyers_list = Array.from(Array(10).keys()).map(x => x + 1);
+    n_buyers_list.push(50);
+    n_buyers_list.push(100);
+    // n_buyers_list.push(500);
+    // n_buyers_list.push(1000);
+    const ar: { executionGas: BigNumber, n_buyers: number }[] = [];
+    for (const n_buyers of n_buyers_list) {
+      // generate n_buyers private keys
+      const signers = Array.from(Array(n_buyers).keys()).map(x => {
+        return ethers.Wallet.createRandom().connect(ethers.provider);
+      });
+      const { clowderMain, realContributions, executionGasUsed, delegateUsed } = await testForNBuyers(signers, false);
+      ar.push({ executionGas: executionGasUsed, n_buyers });
+    }
+    // show a csv table with the results
+    console.log("n_buyers,executionGas");
+    for (const { executionGas, n_buyers } of ar) {
+      console.log(`${n_buyers},${executionGas.toString()}`);
+    }
+
+  }).timeout(6 * 60 * 60 * 1000);
 
 
   it("Must be able to flashbuy an NFT", async () => {
@@ -315,7 +375,7 @@ describe("Execution functions", () => {
     // deploying again because we just reset the network
     const { clowderMain, feeReceiver, feeFraction, owner,
       testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
-      eip712Domain, wethHolder: user, delegate } = await deployForTests();
+      eip712Domain, wethHolder: user, delegateEOA } = await deployForTests();
 
 
     // approve the clowder contract to spend wethHolder's WETH
@@ -357,7 +417,7 @@ describe("Execution functions", () => {
       buyNonce: BigNumber.from(0),
       buyPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
 
-      delegate: delegate.address,
+      delegate: delegateEOA.address,
     };
     const myBuyOrderSigned = await ClowderSignature.signBuyOrder(myBuyOrder,
       eip712Domain,
@@ -383,7 +443,9 @@ describe("Execution functions", () => {
       {
         to: collection,
         value: BigNumber.from(0),
-        data: (ERC721__factory.createInterface() as any).encodeFunctionData("safeTransferFrom(address, address, uint256)", [clowderCalleeExample.address, delegate.address, tokenId]),
+        data: (ERC721__factory.createInterface() as any)
+          .encodeFunctionData("safeTransferFrom(address, address, uint256)",
+            [clowderCalleeExample.address, delegateEOA.address, tokenId]),
       }
     ];
 
@@ -406,7 +468,7 @@ describe("Execution functions", () => {
     );
 
     // make sure the delegate has the NFT
-    expect(await ERC721__factory.connect(collection, ethers.provider).ownerOf(tokenId)).to.equal(delegate.address);
+    expect(await ERC721__factory.connect(collection, ethers.provider).ownerOf(tokenId)).to.equal(delegateEOA.address);
 
   }).timeout(2 * 60 * 1000);
 
