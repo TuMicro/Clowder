@@ -54,7 +54,7 @@ export async function deployForTests(customWethAddress: string | null = null): P
   // await LooksRareUtilLibrary.deployed();
 
   // TODO: remove this when moving to minimal proxy
-  const {seaportUtil, sellOrderV1FunctionsLibrary} = await deployDelegateLibraries();
+  const l = await deployDelegateLibraries();
 
   const clowderMainFactory = await ethers.getContractFactory('ClowderMain', {
     libraries: {
@@ -63,8 +63,9 @@ export async function deployForTests(customWethAddress: string | null = null): P
       // 'LooksRareUtil': LooksRareUtilLibrary.address,
 
         // TODO: remove this when moving to minimal proxy
-      'SeaportUtil': seaportUtil.address,
-      'SellOrderV1Functions': sellOrderV1FunctionsLibrary.address,
+      'SeaportUtil': l.seaportUtil.address,
+      'SellOrderV1Functions': l.sellOrderV1FunctionsLibrary.address,
+      'TransferOrderV1Functions': l.transferOrderV1FunctionsLibrary.address,
     }
   });
 

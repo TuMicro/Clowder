@@ -52,3 +52,28 @@ export interface SellOrderV1 extends SellOrderV1Basic {
   readonly r : string;
   readonly s : string;
 }
+
+export enum AssetType {
+  // 0: ETH on mainnet, MATIC on polygon, etc.
+  NATIVE = 0,
+  ERC20 = 1,
+  ERC721 = 2,
+  ERC1155 = 3
+}
+
+export interface TransferOrderV1Basic {
+  readonly signer : string; // order signer
+
+  readonly assetType: AssetType;
+  readonly token: string;
+  readonly tokenId: BigNumber;
+  readonly recipient: string;
+
+  readonly nonce: BigNumber;
+}
+
+export interface TransferOrderV1 extends TransferOrderV1Basic {
+  readonly v : number;
+  readonly r : string;
+  readonly s : string;
+}
