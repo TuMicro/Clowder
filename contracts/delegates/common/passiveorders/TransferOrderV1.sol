@@ -9,7 +9,7 @@ enum AssetType {
     // 0: ETH on mainnet, MATIC on polygon, etc.
     NATIVE,
 
-    // 1: ERC20 items (ERC777 and ERC20 analogues could also technically work)
+    // 1: ERC20 items
     ERC20,
 
     // 2: ERC721 items
