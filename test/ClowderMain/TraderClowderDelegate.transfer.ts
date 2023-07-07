@@ -4,18 +4,15 @@ import { ETHER, MAX_UINT256 } from "../constants/ether";
 import { getUnixTimestamp, ONE_DAY_IN_SECONDS } from "../constants/time";
 import { ClowderSignature } from "./clowdersignature";
 import { DeployOutputs, deployForTests } from "./deployclowdermain";
-import { AssetType, BuyOrderV1, BuyOrderV1Basic, SellOrderV1Basic, TransferOrderV1Basic } from "./model";
+import { AssetType, BuyOrderV1, BuyOrderV1Basic, TransferOrderV1Basic } from "./model";
 import { getBuyExecutionPriceFromPrice } from "./utils";
-import { ERC721, ERC721__factory, SeaportInterface__factory, TraderClowderDelegateV1, TraderClowderDelegateV1__factory, XSplitMain__factory } from "../../typechain-types";
-import { OpenSeaSeaportConstants } from "../constants/seaport";
-import { ZERO_ADDRESS, ZERO_BYTES32 } from "../../src/constants/zero";
-import { ReservoirOracleFloorAsk, fetchOracleFloorAsk } from "../../src/api/reservoir-oracle-floor-ask";
+import { ERC721, ERC721__factory, TraderClowderDelegateV1, TraderClowderDelegateV1__factory } from "../../typechain-types";
+import { ZERO_ADDRESS } from "../../src/constants/zero";
 import { TraderClowderDelegateSignature } from "./delegatesignature";
 import { getChainRpcUrl } from "../../hardhat.config";
 import { impersonateAccount } from "../hardhat-util";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { formatEther } from "ethers/lib/utils";
 
 describe.only("Delegate transferAsset", () => {
 
