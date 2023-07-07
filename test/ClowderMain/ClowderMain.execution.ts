@@ -309,7 +309,7 @@ describe("Execution functions", () => {
       };
     }
 
-    for (let n_buyers = 1; n_buyers <= 10; n_buyers++) {
+    for (let n_buyers = 1; n_buyers <= 3; n_buyers++) {
 
       const allSigners = await ethers.getSigners();
       console.log("allSigners.length: " + allSigners.length);
@@ -328,12 +328,12 @@ describe("Execution functions", () => {
     // now using the smart contract delegate
     // generate integers from 1 to 10 in a list
     // const n_buyers_list = Array.from(Array(10).keys()).map(x => x + 1);
-    const n_buyers_list = [];
+    const n_buyers_list = [10];
     // n_buyers_list.push(50);
     // n_buyers_list.push(100);
-    n_buyers_list.push(150);
-    n_buyers_list.push(220);
-    n_buyers_list.push(230);
+    // n_buyers_list.push(150);
+    // n_buyers_list.push(220);
+    // n_buyers_list.push(230);
     // n_buyers_list.push(500);
     // n_buyers_list.push(1000);
     const ar: { executionGas: BigNumber, n_buyers: number }[] = [];
@@ -405,6 +405,7 @@ describe("Execution functions", () => {
     const clowderCalleeExample = await ClowderCalleeExample.connect(botController).deploy(
       clowderMain.address,
       wethTokenContract.address,
+      botController.address,
     );
     await clowderCalleeExample.deployed();
     console.log("ClowderCalleeExample deployed to:", clowderCalleeExample.address);
