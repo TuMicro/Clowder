@@ -17,7 +17,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { formatEther } from "ethers/lib/utils";
 
-describe("Delegate transferAsset", () => {
+describe.only("Delegate transferAsset", () => {
 
   let deployOutputs: DeployOutputs;
   let buyOrderSigned: BuyOrderV1;
@@ -57,16 +57,12 @@ describe("Delegate transferAsset", () => {
     deployOutputs = await deployForTests();
     const { clowderMain, thirdParty, eip712Domain, feeFraction,
       wethTokenContract, wethHolder,
-      owner } = deployOutputs;
+      owner, delegateFactory } = deployOutputs;
 
-    // traderClowderDelegateV1 = await deployDelegate(
-    //   clowderMain.address,
-    //   executionId,
-    //   "0xAeB1D03929bF87F69888f381e73FBf75753d75AF" // reservoir oracle signer address
-    // );
-    const nonce = await ethers.provider.getTransactionCount(clowderMain.address);
+
+    const nonce = await ethers.provider.getTransactionCount(delegateFactory);
     const traderDelegateAddress = ethers.utils.getContractAddress({
-      from: clowderMain.address,
+      from: delegateFactory,
       nonce: nonce,
     });
     traderClowderDelegateV1 = TraderClowderDelegateV1__factory.connect(traderDelegateAddress,

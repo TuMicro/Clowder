@@ -60,20 +60,7 @@ describe("Delegate", () => {
     deployOutputs = await deployForTests();
     const { clowderMain, thirdParty, eip712Domain, feeFraction,
       wethTokenContract, wethHolder,
-      owner } = deployOutputs;
-
-    // traderClowderDelegateV1 = await deployDelegate(
-    //   clowderMain.address,
-    //   executionId,
-    //   "0xAeB1D03929bF87F69888f381e73FBf75753d75AF" // reservoir oracle signer address
-    // );
-    const nonce = await ethers.provider.getTransactionCount(clowderMain.address);
-    const traderDelegateAddress = ethers.utils.getContractAddress({
-      from: clowderMain.address,
-      nonce: nonce,
-    });
-    traderClowderDelegateV1 = TraderClowderDelegateV1__factory.connect(traderDelegateAddress,
-      ethers.provider);
+      owner, delegateFactory } = deployOutputs;
 
     nftOwner = await impersonateAccount("0x45A2235b9027eaB23FfcF759c893763F0019cBff");
     erc721Contract = ERC721__factory.connect("0x220fa5ccc9404802ed6db0935eb4feefc27c937e",
@@ -114,6 +101,15 @@ describe("Delegate", () => {
       MAX_UINT256
     );
 
+    // get delegate contract
+    const nonce = await ethers.provider.getTransactionCount(delegateFactory);
+    const traderDelegateAddress = ethers.utils.getContractAddress({
+      from: delegateFactory,
+      nonce: nonce,
+    });
+    traderClowderDelegateV1 = TraderClowderDelegateV1__factory.connect(traderDelegateAddress,
+      ethers.provider);
+
     // approve the clowder contract to move nft holder's nfts
     await erc721Contract.connect(nftOwner).setApprovalForAll(
       clowderMain.address,
@@ -131,7 +127,7 @@ describe("Delegate", () => {
   });
 
   it("Must have the correct name and symbol", async () => {
-    expect(await traderClowderDelegateV1.name()).to.be.eq(executionId.toString());
+    expect(await traderClowderDelegateV1.name()).to.be.eq("Clowder Delegate Shares");
     expect(await traderClowderDelegateV1.symbol()).to.be.eq("CDS");
   });
 
@@ -464,17 +460,11 @@ describe("Delegate with two buyers", () => {
     deployOutputs = await deployForTests();
     const { clowderMain, thirdParty: thirdParty_1, eip712Domain, feeFraction,
       wethTokenContract, wethHolder,
-      owner: thirdParty_2 } = deployOutputs;
+      owner: thirdParty_2, delegateFactory } = deployOutputs;
 
-    // traderClowderDelegateV1 = await deployDelegate(
-    //   clowderMain.address,
-    //   executionId,
-    //   "0xAeB1D03929bF87F69888f381e73FBf75753d75AF" // reservoir oracle signer address
-    // );
-    // TODO: get the delegate address
-    const nonce = await ethers.provider.getTransactionCount(clowderMain.address);
+    const nonce = await ethers.provider.getTransactionCount(delegateFactory);
     const traderDelegateAddress = ethers.utils.getContractAddress({
-      from: clowderMain.address,
+      from: delegateFactory,
       nonce: nonce,
     });
     traderClowderDelegateV1 = TraderClowderDelegateV1__factory.connect(traderDelegateAddress,
