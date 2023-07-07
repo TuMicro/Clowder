@@ -44,6 +44,8 @@ npx hardhat --network goerli deploy
 
 npx hardhat --network polygon deploy
 
+npx hardhat --network polygon deploy --reset
+
 ```
 
 Logs:
@@ -68,7 +70,7 @@ Logs:
 Some useful ones:
 ```
 # verify source code (make sure to set the config on the respective network)
-npx hardhat --network rinkeby etherscan-verify --solc-input
+npx hardhat --network polygon etherscan-verify --solc-input
 
 # if the above fails, try this:
 npx hardhat --network mainnet etherscan-verify --api-key KEY --api-url URL

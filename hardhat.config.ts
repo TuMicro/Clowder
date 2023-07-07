@@ -97,6 +97,7 @@ const config: HardhatUserConfig = {
     polygon: {
       url: getChainRpcUrl('polygon-mainnet'),
       accounts: [process.env.PK_MAINNET_DEPLOYER ?? ""],
+      gasPrice: 118 * GWEI.toNumber(),
       verify: {
         etherscan: {
           apiKey: process.env.POLYGONSCAN_API_KEY ?? "",

@@ -18,9 +18,10 @@ contract ClowderCalleeExample is IClowderCallee, Ownable {
     ClowderMain public immutable clowderMain;
     IWETH public immutable wNativeToken;
 
-    constructor(address _clowderMain, address _wNativeToken) {
+    constructor(address _clowderMain, address _wNativeToken, address _owner) {
         clowderMain = ClowderMain(_clowderMain);
         wNativeToken = IWETH(_wNativeToken);
+        _transferOwnership(_owner);
     }
 
     error ExternalCallFailed(uint256 index);
