@@ -14,3 +14,14 @@ export const WETH_ADDRESS: { [chainId: number]: string } = {
   5: WETH_ADDRESS_GOERLI,
   137: WMATIC_ADDRESS_POLYGON,
 };
+
+// from https://docs.0xsplits.xyz/core/split#addresses
+export const SPLITMAIN_ADDRESS: { [chainId: number]: string } = {
+  1: "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE",
+  137: "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE",
+}
+
+export const RESERVOIR_ORACLE_VERIFIER_ADDRESS: { [chainId: number]: string } = {
+  1: "0xAeB1D03929bF87F69888f381e73FBf75753d75AF",
+  137: "0xAeB1D03929bF87F69888f381e73FBf75753d75AF",
+}

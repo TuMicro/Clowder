@@ -6,7 +6,7 @@ import { ClowderSignature } from "./clowdersignature";
 import { DeployOutputs, deployForTests } from "./deployclowdermain";
 import { BuyOrderV1, BuyOrderV1Basic, SellOrderV1Basic } from "./model";
 import { getBuyExecutionPriceFromPrice } from "./utils";
-import { deployDelegate } from "./deploydelegate";
+import { deployDelegateFactory } from "./deploydelegate";
 import { ERC721, ERC721__factory, SeaportInterface__factory, TraderClowderDelegateV1, TraderClowderDelegateV1__factory, XSplitMain__factory } from "../../typechain-types";
 import { OpenSeaSeaportConstants } from "../constants/seaport";
 import { ZERO_ADDRESS, ZERO_BYTES32 } from "../../src/constants/zero";

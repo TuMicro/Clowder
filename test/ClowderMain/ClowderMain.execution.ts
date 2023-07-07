@@ -212,7 +212,7 @@ describe("Execution functions", () => {
     async function testForNBuyers(signers: (SignerWithAddress | Wallet)[], useDelegateEOA = true) {
       const { clowderMain, feeFraction,
         testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
-        wethHolder, eip712Domain, owner, delegateEOA } = await deployForTests();
+        wethHolder, eip712Domain, owner, delegateEOA, delegateFactory } = await deployForTests();
 
       // approve the clowder contract to move nft holder's nfts
       await testERC721.connect(testERC721Holder).setApprovalForAll(
@@ -266,9 +266,9 @@ describe("Execution functions", () => {
 
       let traderDelegateAddress: string | null = null;
       if (!useDelegateEOA) {
-        const nonce = await ethers.provider.getTransactionCount(clowderMain.address);
+        const nonce = await ethers.provider.getTransactionCount(delegateFactory);
         traderDelegateAddress = ethers.utils.getContractAddress({
-          from: clowderMain.address,
+          from: delegateFactory,
           nonce: nonce,
         });
       }

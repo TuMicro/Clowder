@@ -5,7 +5,6 @@ import {ClowderMain} from "../../ClowderMain.sol";
 import {SellOrderV1, SellOrderV1Functions} from "./passiveorders/SellOrderV1.sol";
 import {TransferOrderV1, TransferOrderV1Functions, AssetType} from "../common/passiveorders/TransferOrderV1.sol";
 import {SeaportUtil} from "./interactionutils/SeaportUtil.sol";
-import {Execution} from "../../libraries/execution/Execution.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {ReservoirOracle} from "./external/reservoiroracle/ReservoirOracle.sol";
 import {LiquidSplit} from "./external/liquidsplit/LiquidSplit.sol";
@@ -13,26 +12,34 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {ITraderClowderDelegateV1} from "./ITraderClowderDelegateV1.sol";
 
 contract TraderClowderDelegateV1 is
     ReentrancyGuard,
     ReservoirOracle,
     LiquidSplit,
-    ERC20
+    ERC20,
+    Initializable,
+    ITraderClowderDelegateV1
 {
-    // constants
+    /* constants */
     uint256 public constant PERCENTAGE_SCALE_FOR_0XSPLITS = 1e6;
     uint256 public constant minConsensusForSellingOverFairPrice = 5_000; // out of 10_000
     uint256 public constant minConsensusForSellingUnderOrEqualFairPrice =
         10_000; // out of 10_000
     uint256 public constant minConsensusForAssetTransfer = 10_000; // out of 10_000
     uint32 public constant protocolFeeFractionFromSelling = 1e4; // out of PERCENTAGE_SCALE_FOR_0XSPLITS
+    string public constant _name = "Clowder Delegate Shares";
+    string public constant _symbol = "CDS";
 
-    // immutable variables
+    /* immutable variables */
     ClowderMain public immutable clowderMain;
-    uint256 public immutable executionId;
     address public immutable reservoirOracleAddress;
-    bytes32 public immutable EIP712_DOMAIN_SEPARATOR;
+
+    /* storage variables */
+
+    bytes32 public EIP712_DOMAIN_SEPARATOR;
 
     // user => nonce => isUsableSellNonce
     mapping(address => mapping(uint256 => bool)) public isUsableSellNonce;
@@ -41,26 +48,27 @@ contract TraderClowderDelegateV1 is
     mapping(address => mapping(uint256 => bool)) public isUsableTransferlNonce;
 
 
-    // libraries
+    /* libraries */
     using SafeTransferLib for address;
 
     constructor(
         address _clowderMain,
-        uint256 _executionId,
         address _reservoirOracleAddress,
-        address _splitMain,
-        string memory _name,
+        address _splitMain
+    ) LiquidSplit(_splitMain) 
+        ERC20("", "") // we don't set anything here as we don't use these values
+        // because they are saved in storage and storage will be cleaned up on proxy clones (right?)
+     {
+        clowderMain = ClowderMain(_clowderMain);
+        reservoirOracleAddress = _reservoirOracleAddress;
+    }
+
+    function createNewClone(
         address[] memory accounts,
         uint256[] memory contributions,
-        uint256 totalContributions
-    ) LiquidSplit(_splitMain) ERC20(_name, 
-        "CDS" // Clowder Delegate Shares
-    ) {
-        clowderMain = ClowderMain(_clowderMain);
-        executionId = _executionId;
-        reservoirOracleAddress = _reservoirOracleAddress;
+        uint256 totalContributions) public initializer returns (address) {
 
-        EIP712_DOMAIN_SEPARATOR = keccak256(
+		EIP712_DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 keccak256(
                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
@@ -93,7 +101,9 @@ contract TraderClowderDelegateV1 is
                 );
             }
         }
-    }
+
+        return address(this);
+	}
 
     // To be able to receive NFTs
     // Note: parameters must stay as it is a standard
@@ -344,5 +354,11 @@ contract TraderClowderDelegateV1 is
 
     function decimals() public pure override returns (uint8) {
         return 4;
+    }
+    function name() public pure override returns (string memory) {
+        return _name;
+    }
+    function symbol() public pure override returns (string memory) {
+        return _symbol;
     }
 }

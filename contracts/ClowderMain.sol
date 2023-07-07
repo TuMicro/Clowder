@@ -22,9 +22,7 @@ import {SignatureUtil} from "./libraries/SignatureUtil.sol";
 import {NftCollectionFunctions} from "./libraries/NftCollection.sol";
 import {IClowderCallee} from "./interfaces/IClowderCallee.sol";
 
-// TODO: remove when implementing the minimal proxy (factory)
-import {TraderClowderDelegateV1} from "./delegates/trader/TraderClowderDelegateV1.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
+import {ITraderClowderDelegateV1} from "./delegates/trader/ITraderClowderDelegateV1.sol";
 
 
 contract ClowderMainOwnable is Ownable {
@@ -55,6 +53,8 @@ contract ClowderMainOwnable is Ownable {
 contract ClowderMain is ClowderMainOwnable, ReentrancyGuard {
     address public immutable WETH;
     bytes32 public immutable EIP712_DOMAIN_SEPARATOR;
+    // TODO: remove when implementing delegate factory recognition;
+    address public immutable delegateFactory;
 
     // user => nonce => isUsedBuyNonce
     mapping(address => mapping(uint256 => bool)) public isUsedBuyNonce;
@@ -65,9 +65,10 @@ contract ClowderMain is ClowderMainOwnable, ReentrancyGuard {
     // executionId => Execution
     mapping(uint256 => Execution) public executions;
 
-    constructor(address _WETH, address _protocolFeeReceiver) {
+    constructor(address _WETH, address _protocolFeeReceiver, address _delegateFactory) {
         WETH = _WETH;
         protocolFeeReceiver = _protocolFeeReceiver;
+        delegateFactory = _delegateFactory;
 
         EIP712_DOMAIN_SEPARATOR = keccak256(
             abi.encode(
@@ -231,20 +232,17 @@ contract ClowderMain is ClowderMainOwnable, ReentrancyGuard {
 
         // getting the actual delegate
         address actualDelegate = buyOrders[0].delegate;
-        // TODO: check if delegate is a clowder delegate factory
+        // TODO: factory recognition, I mean, check if delegate is a clowder delegate factory
         if (actualDelegate == address(0)) {
-            // for now just instantiate the trader clowder delegate here
-            // with some hardcoded values
-            actualDelegate = address(new TraderClowderDelegateV1(
-                address(this),
-                buyOrders[0].executionId,
-                0xAeB1D03929bF87F69888f381e73FBf75753d75AF, // TODO: get the RESERVOIR ADDRESS from the factory
-                0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE, // TODO: get the split main address from the factory
-                Strings.toString(buyOrders[0].executionId),
+            // instantiate the trader clowder delegate here
+            actualDelegate = ITraderClowderDelegateV1(
+                // TODO: when factory recognition is ready just use buyOrders[0].delegate
+                delegateFactory
+            ).createNewClone(
                 owners,
                 contributions,
                 price
-            ));
+            );
         } else {
             // otherwise we store the contributions in realContributions here
             for (uint256 i = 0; i < owners.length; i++) {
