@@ -13,6 +13,7 @@ import { GWEI } from "./test/constants/ether";
 // tasks
 // import "./tasks/execute_buy";
 import "./tasks/deployments";
+import { ONE_HOUR_IN_SECONDS } from "./test/constants/time";
 // import "./tasks/list_on_opensea";
 // import "./tasks/get_execution";
 // import "./tasks/list_on_looksrare";
@@ -74,6 +75,9 @@ const config: HardhatUserConfig = {
       },
       viaIR: true, // to avoid stack too deep errors
     },
+  },
+  mocha: {
+    timeout: 60 * 1000 * 10, // 10 minutes
   },
   // defaultNetwork: "hardhat", // default is hardhat
   networks: {
