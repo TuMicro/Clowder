@@ -98,7 +98,7 @@ describe("Delegate transferAsset", () => {
       buyNonce: BigNumber.from(0),
       buyPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
 
-      delegate: ZERO_ADDRESS, // TODO: change when we move to minimal proxy
+      delegate: ZERO_ADDRESS, // TODO: change when we move to delegate factory recognition
     };
     buyOrderSigned = await ClowderSignature.signBuyOrder(buyOrder,
       eip712Domain,
