@@ -3,12 +3,16 @@ pragma solidity >=0.8.13;
 
 import {ClowderMain} from "../../ClowderMain.sol";
 import {SellOrderV1, SellOrderV1Functions} from "./passiveorders/SellOrderV1.sol";
+import {TransferOrderV1, TransferOrderV1Functions, AssetType} from "../common/passiveorders/TransferOrderV1.sol";
 import {SeaportUtil} from "./interactionutils/SeaportUtil.sol";
 import {Execution} from "../../libraries/execution/Execution.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {ReservoirOracle} from "./external/reservoiroracle/ReservoirOracle.sol";
 import {LiquidSplit} from "./external/liquidsplit/LiquidSplit.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 contract TraderClowderDelegateV1 is
     ReentrancyGuard,
@@ -21,6 +25,7 @@ contract TraderClowderDelegateV1 is
     uint256 public constant minConsensusForSellingOverFairPrice = 5_000; // out of 10_000
     uint256 public constant minConsensusForSellingUnderOrEqualFairPrice =
         10_000; // out of 10_000
+    uint256 public constant minConsensusForAssetTransfer = 10_000; // out of 10_000
     uint32 public constant protocolFeeFractionFromSelling = 1e4; // out of PERCENTAGE_SCALE_FOR_0XSPLITS
 
     // immutable variables
@@ -29,8 +34,15 @@ contract TraderClowderDelegateV1 is
     address public immutable reservoirOracleAddress;
     bytes32 public immutable EIP712_DOMAIN_SEPARATOR;
 
-    // user => nonce => isUsedSellNonce
-    mapping(address => mapping(uint256 => bool)) public isUsedSellNonce;
+    // user => nonce => isUsableSellNonce
+    mapping(address => mapping(uint256 => bool)) public isUsableSellNonce;
+
+    // user => nonce => isUsableTransferlNonce
+    mapping(address => mapping(uint256 => bool)) public isUsableTransferlNonce;
+
+
+    // libraries
+    using SafeTransferLib for address;
 
     constructor(
         address _clowderMain,
@@ -93,6 +105,24 @@ contract TraderClowderDelegateV1 is
     ) external pure returns (bytes4) {
         return this.onERC721Received.selector;
     }
+    function onERC1155Received(
+        address operator,
+        address from,
+        uint256 id,
+        uint256 value,
+        bytes calldata data
+    ) external pure returns (bytes4) {
+        return this.onERC1155Received.selector;
+    }
+    function onERC1155BatchReceived(
+        address operator,
+        address from,
+        uint256[] calldata ids,
+        uint256[] calldata values,
+        bytes calldata data
+    ) external pure returns (bytes4) {
+        return this.onERC1155BatchReceived.selector;
+    }
 
     // to be able to receive eth
     receive() external payable {}
@@ -104,7 +134,20 @@ contract TraderClowderDelegateV1 is
         );
 
         for (uint256 i = 0; i < sellOrderNonces.length; i++) {
-            isUsedSellNonce[msg.sender][sellOrderNonces[i]] = true; // cancelled
+            isUsableSellNonce[msg.sender][sellOrderNonces[i]] = true; // cancelled
+        }
+    }
+
+    function cancellTransferOrders(uint256[] calldata transferOrderNonces)
+        external
+    {
+        require(
+            transferOrderNonces.length > 0,
+            "Cancel: Must provide at least one nonce"
+        );
+
+        for (uint256 i = 0; i < transferOrderNonces.length; i++) {
+            isUsableTransferlNonce[msg.sender][transferOrderNonces[i]] = true; // cancelled
         }
     }
 
@@ -127,7 +170,7 @@ contract TraderClowderDelegateV1 is
             uint256 maxOfMinProceeds,
             uint256 realContributionOnBoard
         ) = SellOrderV1Functions.validateSellOrdersParameters(
-                isUsedSellNonce,
+                isUsableSellNonce,
                 this,
                 orders
             );
@@ -153,6 +196,67 @@ contract TraderClowderDelegateV1 is
         );
 
         SeaportUtil.listERC721(orders[0], minExpirationTime, maxOfMinProceeds);
+    }
+
+    function transferAsset(
+        TransferOrderV1[] calldata orders
+    ) external nonReentrant {
+        require(
+            orders.length > 0,
+            "Transfer: Must have at least one order"
+        );
+
+        /* Validations */
+        (
+            uint256 realContributionOnBoard
+        ) = TransferOrderV1Functions.validateTransferOrdersParameters(
+                isUsableTransferlNonce,
+                this,
+                orders
+        );
+
+        // validate consensus
+        require(
+            realContributionOnBoard * 10_000 >=
+                totalSupply() * minConsensusForAssetTransfer,
+            "Transfer: consensus not reached"
+        );
+
+        // Includes interaction with
+        // other contracts
+        TransferOrderV1Functions.validateSignatures(
+            orders,
+            EIP712_DOMAIN_SEPARATOR
+        );
+
+        // transfer the asset
+        if (orders[0].assetType == AssetType.NATIVE) {
+            orders[0].recipient.safeTransferETH(address(this).balance);
+
+        } else if (orders[0].assetType == AssetType.ERC20) {
+            orders[0].token.safeTransfer(
+                orders[0].recipient,
+                ERC20(orders[0].token).balanceOf(address(this))
+            );
+
+        } else if (orders[0].assetType == AssetType.ERC721) {
+            IERC721(orders[0].token).safeTransferFrom(
+                address(this),
+                orders[0].recipient,
+                orders[0].tokenId);
+
+        } else if (orders[0].assetType == AssetType.ERC1155) {
+            IERC1155(orders[0].token).safeTransferFrom(
+                address(this),
+                orders[0].recipient,
+                orders[0].tokenId,
+                IERC1155(orders[0].token).balanceOf(address(this), orders[0].tokenId),
+                ""
+                );
+                
+        } else {
+            revert("Transfer: asset type not supported");
+        }
     }
 
     function validatePriceConsensus(

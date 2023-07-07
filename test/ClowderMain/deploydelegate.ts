@@ -12,9 +12,15 @@ export async function deployDelegateLibraries() {
     const sellOrderV1FunctionsLibrary = await sellOrderV1FunctionsFactory.deploy()
     await sellOrderV1FunctionsLibrary.deployed();
 
+    // deploy the TransferOrderV1Functions library
+    const transferOrderV1FunctionsFactory = await ethers.getContractFactory('TransferOrderV1Functions');
+    const transferOrderV1FunctionsLibrary = await transferOrderV1FunctionsFactory.deploy()
+    await transferOrderV1FunctionsLibrary.deployed();
+
     return {
       seaportUtil,
       sellOrderV1FunctionsLibrary,
+      transferOrderV1FunctionsLibrary,
     }
 }
 

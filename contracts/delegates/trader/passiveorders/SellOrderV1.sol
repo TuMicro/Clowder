@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.8.13;
 
-import {ClowderMain} from "../../../ClowderMain.sol";
 import {SignatureUtil} from "../../../libraries/SignatureUtil.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {Execution} from "../../../libraries/execution/Execution.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 struct FeeRecipient {
@@ -119,7 +117,7 @@ library SellOrderV1Functions {
     }
 
     function validateSellOrdersParameters(
-        mapping(address => mapping(uint256 => bool)) storage _isUsedSellNonce,
+        mapping(address => mapping(uint256 => bool)) storage _isUsableNonce,
         IERC20 ownershipToken,
         SellOrderV1[] calldata orders
     ) public view returns (uint256, uint256, uint256) {
@@ -205,7 +203,7 @@ library SellOrderV1Functions {
 
             // Validate order nonce usability
             require(
-                !_isUsedSellNonce[order.signer][order.nonce],
+                !_isUsableNonce[order.signer][order.nonce],
                 "Order nonce is unusable"
             );
             // counting the "votes" in favor of this price
