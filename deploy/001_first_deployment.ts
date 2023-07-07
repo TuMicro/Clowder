@@ -45,7 +45,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment,) {
   const nonce = await ethers.provider.getTransactionCount(deployer);
   const clowderMainAddress = ethers.utils.getContractAddress({
     from: deployer,
-    nonce: nonce,
+    nonce: nonce + 2, // 2 deploys later we deploy ClowderMain
   });
 
   // deploy the delegate implementation
