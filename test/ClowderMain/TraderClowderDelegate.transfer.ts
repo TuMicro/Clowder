@@ -14,7 +14,7 @@ import { impersonateAccount } from "../hardhat-util";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 
-describe.only("Delegate transferAsset", () => {
+describe("Delegate transferAsset", () => {
 
   let deployOutputs: DeployOutputs;
   let buyOrderSigned: BuyOrderV1;
