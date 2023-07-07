@@ -20,7 +20,7 @@ import { SplitsClient } from '@0xsplits/splits-sdk'
 import { SplitMain } from "@0xsplits/splits-sdk/dist/typechain/SplitMain/ethereum";
 import { formatEther } from "ethers/lib/utils";
 
-describe.only("Delegate", () => {
+describe("Delegate", () => {
 
   let deployOutputs: DeployOutputs;
   let buyOrderSigned: BuyOrderV1;
@@ -447,7 +447,7 @@ describe.only("Delegate", () => {
       //const arr = Array.from(Array(20).keys()).map(x => x + 1);
       //arr.push(50, 100, 150, 200, 300, 400, 500);
 
-      const arr = [280];
+      const arr = [277];
 
       //get the max number in the array
       const max = Math.max(...arr);
@@ -455,19 +455,19 @@ describe.only("Delegate", () => {
         return ethers.Wallet.createRandom().connect(ethers.provider);
       });
 
-      let old_n_buyers = 0;
+      let old_n_signers = 0;
       console.log("n_signers, gasUsed");
-      for (const n_buyers of arr) {
+      for (const n_signers of arr) {
         //console.log("n_buyers", n_buyers);
 
-        for (let i_buyer = old_n_buyers + 1; i_buyer <= n_buyers; i_buyer++) {
+        for (let i_signer = old_n_signers + 1; i_signer <= n_signers; i_signer++) {
 
           let signer: SignerWithAddress | Wallet;
 
-          if (i_buyer === 1) {
+          if (i_signer === 1) {
             signer = thirdParty;
           } else {
-            signer = wallets[i_buyer - 2];
+            signer = wallets[i_signer - 2];
             //const sharesOfThirdParty = await traderClowderDelegateV1.balanceOf(thirdParty.address);
             await traderClowderDelegateV1.connect(thirdParty).transfer(signer.address, BigNumber.from(1));
           }
@@ -509,7 +509,7 @@ describe.only("Delegate", () => {
         const listingReceipt = await txn.wait();
         console.log(signedOrders.length + ", " + listingReceipt.gasUsed.toString());
 
-        old_n_buyers = n_buyers;
+        old_n_signers = n_signers;
       }
     }).timeout(ONE_HOUR_IN_SECONDS * 1000);
   }

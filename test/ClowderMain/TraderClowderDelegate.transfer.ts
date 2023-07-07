@@ -1,10 +1,10 @@
-import { BigNumber, BigNumberish, TypedDataDomain } from "ethers";
+import { BigNumber, BigNumberish, TypedDataDomain, Wallet } from "ethers";
 import { ethers, network } from "hardhat";
 import { ETHER, MAX_UINT256 } from "../constants/ether";
-import { getUnixTimestamp, ONE_DAY_IN_SECONDS } from "../constants/time";
+import { getUnixTimestamp, ONE_DAY_IN_SECONDS, ONE_HOUR_IN_SECONDS } from "../constants/time";
 import { ClowderSignature } from "./clowdersignature";
 import { DeployOutputs, deployForTests } from "./deployclowdermain";
-import { AssetType, BuyOrderV1, BuyOrderV1Basic, SellOrderV1Basic, TransferOrderV1Basic } from "./model";
+import { AssetType, BuyOrderV1, BuyOrderV1Basic, SellOrderV1Basic, TransferOrderV1, TransferOrderV1Basic } from "./model";
 import { getBuyExecutionPriceFromPrice } from "./utils";
 import { ERC721, ERC721__factory, SeaportInterface__factory, TraderClowderDelegateV1, TraderClowderDelegateV1__factory, XSplitMain__factory } from "../../typechain-types";
 import { OpenSeaSeaportConstants } from "../constants/seaport";
@@ -181,13 +181,77 @@ describe("Delegate transferAsset", () => {
     await expect(traderClowderDelegateV1.connect(wethHolder).transferAsset(
       [transferOrderSigned3, transferOrderSigned3]
     )).to.be.revertedWith("Signer already voted");
-    
+
     await traderClowderDelegateV1.connect(wethHolder).transferAsset(
       [transferOrderSigned2, transferOrderSigned3]
     );
-    
+
     // make sure wethHolder has the nft now
     expect(await erc721Contract.ownerOf(erc721TokenId)).to.be.equal(wethHolder.address);
 
   });
+
+  const itEnabled = false;
+  if (itEnabled) {
+
+    //create arr of numbers and fill it with 1 to 20
+    //const arr = Array.from(Array(20).keys()).map(x => x + 1);
+    //arr.push(50, 100, 150, 200, 250, 300, 350, 400);
+
+    const arr = [320];
+
+    //get the max number in the array
+    const max = Math.max(...arr);
+    const wallets = Array.from(Array(max).keys()).map(x => {
+      return ethers.Wallet.createRandom().connect(ethers.provider);
+    });
+
+    for (const n_signers of arr) {
+      it.only("test transferAsset gas with " + n_signers + " buyers", async () => {
+        const { thirdParty,
+          wethTokenContract, wethHolder,
+          owner: owner2 } = deployOutputs;
+
+        const signedTransferOrders: TransferOrderV1[] = [];
+
+        for (let i_signer = 1; i_signer <= n_signers; i_signer++) {
+          let signer: SignerWithAddress | Wallet;
+          if (i_signer === 1) {
+            signer = thirdParty;
+          } else {
+            signer = wallets[i_signer - 2];
+            await traderClowderDelegateV1.connect(thirdParty).transfer(signer.address, BigNumber.from(1));
+          }
+
+          const transferOrder: TransferOrderV1Basic = {
+            signer: signer.address,
+
+            assetType: AssetType.ERC721,
+            token: erc721Contract.address,
+            tokenId: BigNumber.from(erc721TokenId),
+            recipient: wethHolder.address,
+            nonce: BigNumber.from(0),
+          };
+
+          const transferOrderSigned = await TraderClowderDelegateSignature.signTransferOrder(transferOrder,
+            traderDomain,
+            signer,
+          );
+
+          signedTransferOrders.push(transferOrderSigned);
+        }
+
+        const txn = await traderClowderDelegateV1.connect(wethHolder).transferAsset(signedTransferOrders, {
+          gasLimit: 30_000_000 - 1,
+        });
+
+        const transferReceipt = await txn.wait();
+
+        console.log("n_signers:", signedTransferOrders.length + ", gasUsed:", transferReceipt.gasUsed.toString());
+
+      }).timeout(ONE_HOUR_IN_SECONDS * 1000);
+    }
+
+
+  }
 });
