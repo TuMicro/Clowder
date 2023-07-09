@@ -4,7 +4,7 @@ pragma solidity >=0.8.13;
 import {IClowderCallee} from "../interfaces/IClowderCallee.sol";
 
 import {BuyOrderV1} from "../libraries/passiveorders/BuyOrderV1.sol";
-import {ClowderMain} from "../ClowderMain.sol";
+import {IClowderMain} from "../interfaces/IClowderMain.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IWETH} from "../interfaces/IWeth.sol";
 
@@ -15,11 +15,11 @@ struct CallInfo {
 }
 
 contract ClowderCalleeExample is IClowderCallee, Ownable {
-    ClowderMain public immutable clowderMain;
+    IClowderMain public clowderMain;
     IWETH public immutable wNativeToken;
 
     constructor(address _clowderMain, address _wNativeToken, address _owner) {
-        clowderMain = ClowderMain(_clowderMain);
+        clowderMain = IClowderMain(_clowderMain);
         wNativeToken = IWETH(_wNativeToken);
         _transferOwnership(_owner);
     }
@@ -95,5 +95,9 @@ contract ClowderCalleeExample is IClowderCallee, Ownable {
         (bool _success, bytes memory _result) = _to.call{value: _value}(_data);
         require(_success, "ClowderCalleeExample: external call failed");
         return _result;
+    }
+
+    function changeClowderMainAddress(address _clowderMain) external onlyOwner {
+        clowderMain = IClowderMain(_clowderMain);
     }
 }

@@ -21,6 +21,7 @@ import {SignatureUtil} from "./libraries/SignatureUtil.sol";
 // import {LooksRareUtil} from "./libraries/externalmarketplaces/LooksRareUtil.sol";
 import {NftCollectionFunctions} from "./libraries/NftCollection.sol";
 import {IClowderCallee} from "./interfaces/IClowderCallee.sol";
+import {IClowderMain} from "./interfaces/IClowderMain.sol";
 
 import {ITraderClowderDelegateV1} from "./delegates/trader/ITraderClowderDelegateV1.sol";
 
@@ -50,7 +51,7 @@ contract ClowderMainOwnable is Ownable {
     }
 }
 
-contract ClowderMain is ClowderMainOwnable, ReentrancyGuard {
+contract ClowderMain is ClowderMainOwnable, ReentrancyGuard, IClowderMain {
     address public immutable WETH;
     bytes32 public immutable EIP712_DOMAIN_SEPARATOR;
     // TODO: remove when implementing delegate factory recognition;
