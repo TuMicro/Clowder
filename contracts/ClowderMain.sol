@@ -221,6 +221,14 @@ contract ClowderMain is ClowderMainOwnable, ReentrancyGuard, IClowderMain {
             }
         } // ends the orders for loop
 
+        // filter out the owners with zero contributions
+        uint256[] memory _contributions = new uint256[](ownersLength);
+        address[] memory _owners = new address[](ownersLength);
+        for (uint256 i = 0; i < ownersLength; i++) {
+            _owners[i] = owners[i];
+            _contributions[i] = contributions[i];
+        }
+
         // validating that we transferred the correct amounts of WETH
         require(
             protocolFeeTransferred == protocolFee,
@@ -235,19 +243,20 @@ contract ClowderMain is ClowderMainOwnable, ReentrancyGuard, IClowderMain {
         address actualDelegate = buyOrders[0].delegate;
         // TODO: factory recognition, I mean, check if delegate is a clowder delegate factory
         if (actualDelegate == address(0)) {
+
             // instantiate the trader clowder delegate here
             actualDelegate = ITraderClowderDelegateV1(
                 // TODO: when factory recognition is ready just use buyOrders[0].delegate
                 delegateFactory
             ).createNewClone(
-                owners,
-                contributions,
+                _owners,
+                _contributions,
                 price
             );
         } else {
             // otherwise we store the contributions in realContributions here
-            for (uint256 i = 0; i < owners.length; i++) {
-                realContributions[owners[i]][buyOrders[0].executionId] = contributions[i];
+            for (uint256 i = 0; i < _owners.length; i++) {
+                realContributions[_owners[i]][buyOrders[0].executionId] = _contributions[i];
             }
         }
 
