@@ -6,7 +6,7 @@ import { ClowderSignature } from "./clowdersignature";
 import { DeployOutputs, deployForTests } from "./deployclowdermain";
 import { AssetType, BuyOrderV1, BuyOrderV1Basic, SellOrderV1Basic, TransferOrderV1, TransferOrderV1Basic } from "./model";
 import { getBuyExecutionPriceFromPrice } from "./utils";
-import { ERC721, ERC721__factory, SeaportInterface__factory, TraderClowderDelegateV1, TraderClowderDelegateV1__factory, XSplitMain__factory } from "../../typechain-types";
+import { ERC721, ERC721__factory, Erc1155_example2__factory, Erc1155_example__factory, SeaportInterface__factory, TraderClowderDelegateV1, TraderClowderDelegateV1__factory, XSplitMain__factory } from "../../typechain-types";
 import { OpenSeaSeaportConstants } from "../constants/seaport";
 import { ZERO_ADDRESS, ZERO_BYTES32 } from "../../src/constants/zero";
 import { ReservoirOracleFloorAsk, fetchOracleFloorAsk } from "../../src/api/reservoir-oracle-floor-ask";
@@ -226,7 +226,7 @@ describe("Delegate transferAsset", () => {
           const transferOrder: TransferOrderV1Basic = {
             signer: signer.address,
 
-            assetType: AssetType.ERC721,
+            assetType: AssetType.ERC20, //TODO: test with WETH 
             token: erc721Contract.address,
             tokenId: BigNumber.from(erc721TokenId),
             recipient: wethHolder.address,
@@ -251,7 +251,172 @@ describe("Delegate transferAsset", () => {
 
       }).timeout(ONE_HOUR_IN_SECONDS * 1000);
     }
-
-
   }
+
+  it.only("test transferAsset with weth", async () => {
+    const { thirdParty,
+      wethTokenContract, wethHolder,
+      owner: owner2 } = deployOutputs;
+
+    const wethTransfered = ETHER.mul(2);
+    await wethTokenContract.connect(wethHolder).transfer(traderClowderDelegateV1.address, wethTransfered);
+    const initialWethHolderBalance = await wethTokenContract.balanceOf(wethHolder.address);
+    const initialDelegateBalance = await wethTokenContract.balanceOf(traderClowderDelegateV1.address);
+    console.log("initialWethHolderBalance", formatEther(initialWethHolderBalance));
+    console.log("initialDelegateBalance", formatEther(initialDelegateBalance));
+
+    const transferOrder: TransferOrderV1Basic = {
+      signer: thirdParty.address,
+      assetType: AssetType.ERC20,
+      token: wethTokenContract.address,
+      tokenId: BigNumber.from(erc721TokenId), //se le puede dar cualquier cosa
+      recipient: wethHolder.address,
+      nonce: BigNumber.from(0),
+    };
+
+    const transferOrderSigned = await TraderClowderDelegateSignature.signTransferOrder(
+      transferOrder,
+      traderDomain,
+      thirdParty,
+    );
+
+    await traderClowderDelegateV1.connect(wethHolder).transferAsset(
+      [transferOrderSigned]
+    );
+
+    const finalWethHolderBalance = await wethTokenContract.balanceOf(wethHolder.address);
+    const finalDelegateBalance = await wethTokenContract.balanceOf(traderClowderDelegateV1.address);
+    console.log("finalWethHolderBalance", formatEther(finalWethHolderBalance));
+    console.log("finalDelegateBalance", formatEther(finalDelegateBalance));
+
+    expect(initialWethHolderBalance.add(initialDelegateBalance)).to.be.equal(finalWethHolderBalance);
+    expect(finalDelegateBalance).to.be.equal(BigNumber.from(0));
+
+  });
+
+  it.only("test transferAsset with ERC1155", async () => {
+    const { thirdParty,
+      wethTokenContract, wethHolder,
+      owner: owner2 } = deployOutputs;
+
+    // // TODO JOU: sendTransaction don't work with this collection, balanceOf don't work either
+    // //"NFTouring" collection, "Typical Bundle" NFT (ERC1155) : https://opensea.io/assets/matic/0x32f49945225477f16204329bb926577c56878a2f/1736
+    // const erc1155Contract = Erc1155_example__factory.connect("0x32f49945225477f16204329bB926577c56878a2f",
+    //   ethers.provider);
+    // const erc1155Holder = await impersonateAccount("0xAa6CeD3B3360524330E1088B26FA7e6d3eC2a631");
+    // const tokenId = BigNumber.from(1736);
+
+
+    // "CyberKongz: Play & Kollect" collection, "Cyber Fragment" NFT (ERC1155) : https://opensea.io/assets/matic/0x7cbccc4a1576d7a05eb6f6286206596bcbee14ac/1
+    const erc1155Contract = Erc1155_example2__factory.connect("0x7cBCCC4a1576d7A05eB6f6286206596BCBee14aC",
+      ethers.provider);
+    const erc1155Holder = await impersonateAccount("0xaB8Eee3493a55a7bd8126865fD662B7097928088"); //TODO JOU: sendTransaction doesn't work with this account
+    //const erc1155Holder = await impersonateAccount("0x7B3B3097699794d2a4e6D73479980EEdB21E32a3");
+    const tokenId = BigNumber.from(1);
+
+    const holderPreInitialBalance = await erc1155Contract.balanceOf(erc1155Holder.address, tokenId);
+    console.log("holderPreInitialBalance:", holderPreInitialBalance);
+    const delegatePreInitialBalance = await erc1155Contract.balanceOf(traderClowderDelegateV1.address, tokenId);
+    console.log("delegatePreInitialBalance:", delegatePreInitialBalance);
+
+    // erc1155Holder could don't have enough funds, try to send some eth to it    
+    await wethHolder.sendTransaction({
+      to: erc1155Holder.address,
+      value: ethers.utils.parseEther("1"),
+      gasLimit: 30_000_000 - 1,
+    });
+
+    // transfer the NFT from erc1155Holder to traderClowderDelegateV1
+    await erc1155Contract.connect(erc1155Holder).safeTransferFrom(
+      erc1155Holder.address, // la wallet impersonada, la misma que se pone en connect
+      traderClowderDelegateV1.address, // traderClowderDelegateV1
+      tokenId, // token id
+      1, //amount, // poner 1
+      [], //poner un arreglo vacío  ocadena vacía
+    );
+
+    const holderInitialBalance = await erc1155Contract.balanceOf(erc1155Holder.address, tokenId);
+    console.log("holderFinalBalance:", holderInitialBalance);
+    const delegateInitialBalance = await erc1155Contract.balanceOf(traderClowderDelegateV1.address, tokenId);
+    console.log("delegateFinalBalance:", delegateInitialBalance);
+
+    const transferOrder: TransferOrderV1Basic = {
+      signer: thirdParty.address,
+      assetType: AssetType.ERC1155,
+      token: erc1155Contract.address,
+      tokenId: tokenId,
+      recipient: erc1155Holder.address,
+      nonce: BigNumber.from(0),
+    };
+
+    const transferOrderSigned = await TraderClowderDelegateSignature.signTransferOrder(
+      transferOrder,
+      traderDomain,
+      thirdParty,
+    );
+
+    await traderClowderDelegateV1.connect(wethHolder).transferAsset(
+      [transferOrderSigned]
+    );
+
+    const holderFinalBalance = await erc1155Contract.balanceOf(erc1155Holder.address, tokenId);
+    console.log("holderFinalBalance:", holderFinalBalance);
+    const delegateFinalBalance = await erc1155Contract.balanceOf(traderClowderDelegateV1.address, tokenId);
+    console.log("delegateFinalBalance:", delegateFinalBalance);
+
+
+    expect(holderInitialBalance.add(delegateInitialBalance)).to.be.equal(holderFinalBalance);
+    expect(delegateFinalBalance).to.be.equal(BigNumber.from(0));
+  });
+
+  it.only("test transferAsset with native ETH", async () => {
+    const { thirdParty,
+      wethTokenContract, wethHolder,
+      owner: owner2 } = deployOutputs;
+
+    // Test all above with native eth token
+    // todas las cuentas tienen token nativo, tendríamos que transferirle un poco al delegado
+    // potencial problema: todos los connects y sendTransaction, le gastan un poco de eth a quien los ejecuta
+
+    await thirdParty.sendTransaction({
+      to: traderClowderDelegateV1.address,
+      value: ethers.utils.parseEther("1"),
+    });
+
+    //check balances
+    const initialHolderBalance = await ethers.provider.getBalance(wethHolder.address);
+    console.log("initialHolderBalance:", formatEther(initialHolderBalance));
+    const initialDelegateBalance = await ethers.provider.getBalance(traderClowderDelegateV1.address);
+    console.log("initialDelegateBalance:", formatEther(initialDelegateBalance));
+
+
+    const transferOrder: TransferOrderV1Basic = {
+      signer: thirdParty.address,
+      assetType: AssetType.NATIVE,
+      token: ZERO_ADDRESS,
+      tokenId: BigNumber.from(0),
+      recipient: wethHolder.address,
+      nonce: BigNumber.from(0),
+    };
+
+    const transferOrderSigned = await TraderClowderDelegateSignature.signTransferOrder(
+      transferOrder,
+      traderDomain,
+      thirdParty,
+    );
+
+    await traderClowderDelegateV1.connect(thirdParty).transferAsset(
+      [transferOrderSigned]
+    );
+
+    //check balances
+    const finalHolderBalance = await ethers.provider.getBalance(wethHolder.address);
+    console.log("finalHolderBalance:", formatEther(finalHolderBalance));
+    const finalDelegateBalance = await ethers.provider.getBalance(traderClowderDelegateV1.address);
+    console.log("finalHolderBalance:", formatEther(finalDelegateBalance));
+
+    expect(initialHolderBalance.add(initialDelegateBalance)).to.be.equal(finalHolderBalance);
+    expect(finalDelegateBalance).to.be.equal(BigNumber.from(0));
+
+  });
 });

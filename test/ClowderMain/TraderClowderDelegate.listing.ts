@@ -269,11 +269,6 @@ describe("Delegate", () => {
     const protocolFee = ethPrice.mul(protocolFeeM).div(1e6);
     expect(protocolFee.eq(feeClowder)).to.be.true;
 
-
-    // TODO: test with 2 initial shareHolders, since the buy
-    // hacer lo que está en beforeEach pero con 2 compradores, check ClowderMain.execution:206
-
-
     //// trying with splits SDK, not working:  
 
     // const splitsClient = new SplitsClient({
