@@ -67,13 +67,26 @@ Logs:
 
 ## Post-deployment tasks
 
-Some useful ones:
+Verification:
+
 ```
 # verify source code (make sure to set the config on the respective network)
 npx hardhat --network polygon etherscan-verify --solc-input
 
 # if the above fails, try this:
 npx hardhat --network mainnet etherscan-verify --api-key KEY --api-url URL
+```
+
+If linked libraries are not verified, try something like this: ([source](https://github.com/nomicfoundation/hardhat/tree/main/packages/hardhat-verify#usage))
+
+```
+npx hardhat npx hardhat verify --network polygon 0x8cf72a00b388bae1c4a1b9c227f2f3f367c559ef "0x877e76536de9843437c2f6cee8115a06bd6ad486" "0xAeB1D03929bF87F69888f381e73FBf75753d75AF" "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE"
+
+```
+
+Some useful ones:
+
+```
 
 # see deployments
 npx hardhat deployments --network rinkeby
