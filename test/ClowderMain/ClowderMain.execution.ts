@@ -7,7 +7,7 @@ import { getUnixTimestamp, ONE_DAY_IN_SECONDS } from "../constants/time";
 import { BuyOrderV1, BuyOrderV1Basic } from "./model";
 import { ethers, network } from "hardhat";
 import { getChainRpcUrl } from "../../hardhat.config";
-import { ERC721__factory, TraderClowderDelegateV1__factory, Weth9__factory } from "../../typechain-types";
+import { ERC721__factory, TraderClowderDelegateV1, TraderClowderDelegateV1__factory, Weth9__factory } from "../../typechain-types";
 import { AbiCoder } from "ethers/lib/utils";
 import { ZERO_ADDRESS } from "../../src/constants/zero";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -158,6 +158,48 @@ describe("Execution functions", () => {
       testERC721TokenId,
       []
     )).to.be.revertedWith("Order nonce is unusable");
+  });
+
+  it("Must execute a buy order with 2 buyOrders from same wallet.", async () => {
+    const { clowderMain, feeReceiver, owner,
+      testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
+      wethHolder, eip712Domain, thirdParty, delegateEOA } = deployOutputs;
+
+    //create buyOrderSigned2 from buyOrderSigned
+    const buyOrder2: BuyOrderV1Basic = {
+      ...buyOrder,
+      buyNonce: buyOrderSigned.buyNonce.add(1),
+    };
+
+    const buyOrderSigned2 = await ClowderSignature.signBuyOrder(buyOrder2,
+      eip712Domain,
+      thirdParty
+    );
+
+    const initialOwner = await testERC721.ownerOf(testERC721TokenId);
+    expect(initialOwner).to.be.equal(testERC721Holder.address);
+
+    await clowderMain.connect(testERC721Holder).executeOnPassiveBuyOrders(
+      [buyOrderSigned, buyOrderSigned2],
+      executionPrice,
+      testERC721TokenId,
+      []
+    );
+
+    const finalOwner = await testERC721.ownerOf(testERC721TokenId);
+    expect(finalOwner).to.be.equal(delegateEOA.address);
+
+    //TODO JOU: get shares of thirdParty
+    // const nonce = await ethers.provider.getTransactionCount(clowderMain.address);
+    // const traderDelegateAddress = ethers.utils.getContractAddress({
+    //   from: clowderMain.address,
+    //   nonce: nonce,
+    // });
+    // const traderClowderDelegateV1: TraderClowderDelegateV1 = TraderClowderDelegateV1__factory.connect(traderDelegateAddress,
+    //   ethers.provider);
+    // const finalSharesOfThirdParty = await traderClowderDelegateV1.balanceOf(thirdParty.address);
+    // console.log("finalSharesOfThirdParty:", finalSharesOfThirdParty);
+
   });
 
   it("Must execute a buy order transferring the NFT and required amounts. Then NFT must belong to the delegate.", async () => {
