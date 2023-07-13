@@ -157,7 +157,7 @@ describe("Delegate", () => {
     expect(await clowderMain.protocolFeeReceiver()).to.equal(distributorAddress);
   });
 
-  it.only("Must list on Seaport and distribute some funds", async () => {
+  it("Must list on Seaport and distribute some funds", async () => {
     const { thirdParty,
       wethTokenContract, wethHolder,
       owner: owner2, clowderMain } = deployOutputs;
