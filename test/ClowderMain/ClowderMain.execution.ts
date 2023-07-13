@@ -254,7 +254,7 @@ describe("Execution functions", () => {
     async function testForNBuyers(signers: (SignerWithAddress | Wallet)[], useDelegateEOA = true) {
       const { clowderMain, feeFraction,
         testERC721, testERC721Holder, testERC721TokenId, wethTokenContract,
-        wethHolder, eip712Domain, owner, delegateEOA } = await deployForTests();
+        wethHolder, eip712Domain, owner, delegateEOA, delegateFactory } = await deployForTests();
 
       // approve the clowder contract to move nft holder's nfts
       await testERC721.connect(testERC721Holder).setApprovalForAll(
@@ -308,9 +308,9 @@ describe("Execution functions", () => {
 
       let traderDelegateAddress: string | null = null;
       if (!useDelegateEOA) {
-        const nonce = await ethers.provider.getTransactionCount(clowderMain.address);
+        const nonce = await ethers.provider.getTransactionCount(delegateFactory);
         traderDelegateAddress = ethers.utils.getContractAddress({
-          from: clowderMain.address,
+          from: delegateFactory,
           nonce: nonce,
         });
       }
@@ -320,7 +320,9 @@ describe("Execution functions", () => {
         orders,
         buyExecutionPrice,
         testERC721TokenId,
-        []
+        [], {
+          gasLimit: 30_000_000 - 1,
+        }
       );
       const receipt = await txn.wait();
       // print gas used
@@ -349,7 +351,7 @@ describe("Execution functions", () => {
       };
     }
 
-    for (let n_buyers = 1; n_buyers <= 10; n_buyers++) {
+    for (let n_buyers = 1; n_buyers <= 3; n_buyers++) {
 
       const allSigners = await ethers.getSigners();
       console.log("allSigners.length: " + allSigners.length);
@@ -367,9 +369,13 @@ describe("Execution functions", () => {
 
     // now using the smart contract delegate
     // generate integers from 1 to 10 in a list
-    const n_buyers_list = Array.from(Array(10).keys()).map(x => x + 1);
-    n_buyers_list.push(50);
-    n_buyers_list.push(100);
+    // const n_buyers_list = Array.from(Array(10).keys()).map(x => x + 1);
+    const n_buyers_list = [10];
+    // n_buyers_list.push(50);
+    // n_buyers_list.push(100);
+    // n_buyers_list.push(150);
+    // n_buyers_list.push(220);
+    // n_buyers_list.push(230);
     // n_buyers_list.push(500);
     // n_buyers_list.push(1000);
     const ar: { executionGas: BigNumber, n_buyers: number }[] = [];
@@ -441,6 +447,7 @@ describe("Execution functions", () => {
     const clowderCalleeExample = await ClowderCalleeExample.connect(botController).deploy(
       clowderMain.address,
       wethTokenContract.address,
+      botController.address,
     );
     await clowderCalleeExample.deployed();
     console.log("ClowderCalleeExample deployed to:", clowderCalleeExample.address);

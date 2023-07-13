@@ -6,9 +6,9 @@ import { ethers } from "hardhat";
 import { ClowderMain, TestERC721, Weth9, Weth9__factory } from "../../typechain-types";
 import { WETH9_ABI } from "../constants/erc20abi";
 import { ETHER } from "../constants/ether";
-import { WETH_ADDRESS } from "./addresses";
+import { RESERVOIR_ORACLE_VERIFIER_ADDRESS, SPLITMAIN_ADDRESS, WETH_ADDRESS } from "./addresses";
 import { ClowderSignature } from "./clowdersignature";
-import { deployDelegateLibraries } from "./deploydelegate";
+import { deployDelegateFactory, deployDelegateLibraries } from "./deploydelegate";
 import { setEtherBalance } from "../hardhat-util";
 
 export const DEFAULT_FEE_FRACTION = BigNumber.from(1); // out of 10k
@@ -35,11 +35,15 @@ export interface DeployOutputs {
   wethHolder: SignerWithAddress,
 
   delegateEOA: SignerWithAddress,
+
+  delegateFactory: string,
 }
 
 export async function deployForTests(customWethAddress: string | null = null): Promise<DeployOutputs> {
   const [owner, nonOwner, thirdParty, feeReceiver, testERC721Owner,
     testERC721Holder, wethHolder, delegateEOA] = await ethers.getSigners();
+
+  const network = await ethers.provider.getNetwork();
 
   // const buyOrderV1FunctionsFactory = await ethers.getContractFactory('BuyOrderV1Functions');
   // const buyOrderV1FunctionsLibrary = await buyOrderV1FunctionsFactory.deploy()
@@ -53,23 +57,26 @@ export async function deployForTests(customWethAddress: string | null = null): P
   // const LooksRareUtilLibrary = await LooksRareUtilFactory.deploy()
   // await LooksRareUtilLibrary.deployed();
 
-  // TODO: remove this when moving to minimal proxy
-  const l = await deployDelegateLibraries();
+  const nonce = await ethers.provider.getTransactionCount(owner.address);
+  const clowderMainAddress = ethers.utils.getContractAddress({
+    from: owner.address,
+    nonce: nonce,
+  });
+
+  const delegateFactory = await deployDelegateFactory(
+    clowderMainAddress,
+    RESERVOIR_ORACLE_VERIFIER_ADDRESS[network.chainId],
+    SPLITMAIN_ADDRESS[network.chainId],
+  );
 
   const clowderMainFactory = await ethers.getContractFactory('ClowderMain', {
     libraries: {
       // 'BuyOrderV1Functions': buyOrderV1FunctionsLibrary.address,
       // 'OpenSeaUtil': OpenSeaUtilLibrary.address,
       // 'LooksRareUtil': LooksRareUtilLibrary.address,
-
-        // TODO: remove this when moving to minimal proxy
-      'SeaportUtil': l.seaportUtil.address,
-      'SellOrderV1Functions': l.sellOrderV1FunctionsLibrary.address,
-      'TransferOrderV1Functions': l.transferOrderV1FunctionsLibrary.address,
     }
   });
 
-  const network = await ethers.provider.getNetwork();
 
   const wethAddress = customWethAddress ?? WETH_ADDRESS[network.chainId];
   const clowderConstructorParams = [
@@ -79,6 +86,7 @@ export async function deployForTests(customWethAddress: string | null = null): P
   const clowderMain = await clowderMainFactory.connect(owner).deploy(
     clowderConstructorParams[0].toString(),
     clowderConstructorParams[1].toString(),
+    delegateFactory.address,
   );
   // Couldn't find a way to link libraries this way:
   // const clowderMainArtifact: Artifact = await artifacts.readArtifact("ClowderMain");
@@ -127,5 +135,6 @@ export async function deployForTests(customWethAddress: string | null = null): P
     wethHolder,
 
     delegateEOA,
+    delegateFactory: delegateFactory.address,
   }
 }

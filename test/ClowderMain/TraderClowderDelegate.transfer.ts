@@ -57,16 +57,12 @@ describe("Delegate transferAsset", () => {
     deployOutputs = await deployForTests();
     const { clowderMain, thirdParty, eip712Domain, feeFraction,
       wethTokenContract, wethHolder,
-      owner } = deployOutputs;
+      owner, delegateFactory } = deployOutputs;
 
-    // traderClowderDelegateV1 = await deployDelegate(
-    //   clowderMain.address,
-    //   executionId,
-    //   "0xAeB1D03929bF87F69888f381e73FBf75753d75AF" // reservoir oracle signer address
-    // );
-    const nonce = await ethers.provider.getTransactionCount(clowderMain.address);
+
+    const nonce = await ethers.provider.getTransactionCount(delegateFactory);
     const traderDelegateAddress = ethers.utils.getContractAddress({
-      from: clowderMain.address,
+      from: delegateFactory,
       nonce: nonce,
     });
     traderClowderDelegateV1 = TraderClowderDelegateV1__factory.connect(traderDelegateAddress,
@@ -98,7 +94,7 @@ describe("Delegate transferAsset", () => {
       buyNonce: BigNumber.from(0),
       buyPriceEndTime: getUnixTimestamp().add(ONE_DAY_IN_SECONDS),
 
-      delegate: ZERO_ADDRESS, // TODO: change when we move to minimal proxy
+      delegate: ZERO_ADDRESS, // TODO: change when we move to delegate factory recognition
     };
     buyOrderSigned = await ClowderSignature.signBuyOrder(buyOrder,
       eip712Domain,

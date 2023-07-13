@@ -7,6 +7,7 @@ import "@nomiclabs/hardhat-ethers";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "hardhat-deploy";
+import "@nomicfoundation/hardhat-verify"; // for verification of contract with linked libraries
 
 import { GWEI } from "./test/constants/ether";
 
@@ -101,6 +102,7 @@ const config: HardhatUserConfig = {
     polygon: {
       url: getChainRpcUrl('polygon-mainnet'),
       accounts: [process.env.PK_MAINNET_DEPLOYER ?? ""],
+      gasPrice: 118 * GWEI.toNumber(),
       verify: {
         etherscan: {
           apiKey: process.env.POLYGONSCAN_API_KEY ?? "",
@@ -142,6 +144,13 @@ const config: HardhatUserConfig = {
 
   typechain: {
     externalArtifacts: ['./external_abis/**/*.json'],
+  },
+
+  etherscan: {
+    apiKey: {
+      mainnet: process.env.MAINNET_ETHERSCAN_API_KEY ?? "",
+      polygon: process.env.POLYGONSCAN_API_KEY ?? "",
+    },
   },
 
 };

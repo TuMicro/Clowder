@@ -14,8 +14,9 @@ export async function fetchOracleFloorAsk(
     }
   };
 
-  // https://docs.reservoir.tools/reference/getoraclecollectionsflooraskv6
-  const url = getReservoirApiBase(chainId) + '/oracle/collections/floor-ask/v6?' +
+  // https://docs.reservoir.tools/reference/getoraclecollectionsflooraskv5
+  // TODO: add onlyNonFlaggedTokens to smart contract when using v6 https://github.com/reservoirprotocol/indexer/blob/main/packages/indexer/src/api/endpoints/oracle/get-collection-floor-ask/v6.ts
+  const url = getReservoirApiBase(chainId) + '/oracle/collections/floor-ask/v5?' +
     `kind=twap`
     + `&currency=${ZERO_ADDRESS}`
     + `&twapSeconds=86400` // 24 hours
