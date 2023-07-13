@@ -311,14 +311,14 @@ contract TraderClowderDelegateV1 is
         bytes32 id = keccak256(
             abi.encode(
                 keccak256(
-                    // from: https://github.com/reservoirprotocol/indexer/blob/main/packages/indexer/src/api/endpoints/oracle/get-collection-floor-ask/v5.ts
-                    // TODO: add onlyNonFlaggedTokens when using v6 https://github.com/reservoirprotocol/indexer/blob/main/packages/indexer/src/api/endpoints/oracle/get-collection-floor-ask/v6.ts
+                    // from: https://github.com/reservoirprotocol/indexer/blob/main/packages/indexer/src/api/endpoints/oracle/get-collection-floor-ask/v6.ts
                     // If you change the version don't forget to change backend too
-                    "ContractWideCollectionPrice(uint8 kind,uint256 twapSeconds,address contract)"
+                    "ContractWideCollectionPrice(uint8 kind,uint256 twapSeconds,address contract,bool onlyNonFlaggedTokens)"
                 ),
                 PriceKind.TWAP,
                 24 hours,
-                collection
+                collection,
+                false
             )
         );
 

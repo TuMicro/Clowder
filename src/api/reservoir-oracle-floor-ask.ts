@@ -14,13 +14,15 @@ export async function fetchOracleFloorAsk(
     }
   };
 
-  // https://docs.reservoir.tools/reference/getoraclecollectionsflooraskv5
-  // TODO: add onlyNonFlaggedTokens to smart contract when using v6 https://github.com/reservoirprotocol/indexer/blob/main/packages/indexer/src/api/endpoints/oracle/get-collection-floor-ask/v6.ts
-  const url = getReservoirApiBase(chainId) + '/oracle/collections/floor-ask/v5?' +
+  // https://docs.reservoir.tools/reference/getoraclecollectionsflooraskv6
+  // https://github.com/reservoirprotocol/indexer/blob/main/packages/indexer/src/api/endpoints/oracle/get-collection-floor-ask/v6.ts
+  // NOTE: if changing this also check that verifyReservoirPrice in solidity matches the function hash and parameters
+  const url = getReservoirApiBase(chainId) + '/oracle/collections/floor-ask/v6?' +
     `kind=twap`
     + `&currency=${ZERO_ADDRESS}`
     + `&twapSeconds=86400` // 24 hours
     + `&collection=${collection}`
+    // useNonFlaggedFloorAsk defaults to false
     ;
 
   console.log(`Fetching floor ask order for ${collection} on chain ${chainId}`);
@@ -47,6 +49,7 @@ export interface ReservoirOracleFloorAsk {
     payload: string;
     timestamp: number;
     signature: string;
+    chainId: string; // example: "137"
   };
   data?: string;
 }

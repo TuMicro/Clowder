@@ -21,6 +21,7 @@ abstract contract ReservoirOracle {
         bytes payload;
         // The UNIX timestamp when the message was signed by the oracle
         uint256 timestamp;
+        uint256 chainId;
         // ECDSA signature or EIP-2098 compact signature
         bytes signature;
     }
@@ -95,11 +96,12 @@ abstract contract ReservoirOracle {
                     keccak256(
                         abi.encode(
                             keccak256(
-                                "Message(bytes32 id,bytes payload,uint256 timestamp)"
+                                "Message(bytes32 id,bytes payload,uint256 timestamp,uint256 chainId)"
                             ),
                             message.id,
                             keccak256(message.payload),
-                            message.timestamp
+                            message.timestamp,
+                            message.chainId
                         )
                     )
                 )
