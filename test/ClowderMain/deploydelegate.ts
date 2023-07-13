@@ -25,11 +25,18 @@ export async function deployDelegateLibraries() {
 }
 
 export async function deployDelegateFactory(
-  clowderMainAddress: string,
   reservoirOracleAddress: string,
   splitMainAddress: string,
 ) {
   const [owner] = await ethers.getSigners();
+
+  const nonce = await ethers.provider.getTransactionCount(owner.address);
+  const clowderMainAddress = ethers.utils.getContractAddress({
+    from: owner.address,
+    nonce: nonce + 5, // assuming we will deploy 5 contracts before ClowderMain 
+    // (the 5 contracts being deployed in this function, includes libraries)
+    // TODO: make this more robust
+  });
 
   const l = await deployDelegateLibraries();
 

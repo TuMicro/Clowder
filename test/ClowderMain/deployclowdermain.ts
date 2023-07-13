@@ -57,14 +57,7 @@ export async function deployForTests(customWethAddress: string | null = null): P
   // const LooksRareUtilLibrary = await LooksRareUtilFactory.deploy()
   // await LooksRareUtilLibrary.deployed();
 
-  const nonce = await ethers.provider.getTransactionCount(owner.address);
-  const clowderMainAddress = ethers.utils.getContractAddress({
-    from: owner.address,
-    nonce: nonce,
-  });
-
   const delegateFactory = await deployDelegateFactory(
-    clowderMainAddress,
     RESERVOIR_ORACLE_VERIFIER_ADDRESS[network.chainId],
     SPLITMAIN_ADDRESS[network.chainId],
   );

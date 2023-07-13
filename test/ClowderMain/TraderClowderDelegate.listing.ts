@@ -6,19 +6,17 @@ import { ClowderSignature } from "./clowdersignature";
 import { DeployOutputs, deployForTests } from "./deployclowdermain";
 import { BuyOrderV1, BuyOrderV1Basic, SellOrderV1, SellOrderV1Basic } from "./model";
 import { getBuyExecutionPriceFromPrice } from "./utils";
-import { deployDelegateFactory } from "./deploydelegate";
 import { ERC721, ERC721__factory, SeaportInterface__factory, TraderClowderDelegateV1, TraderClowderDelegateV1__factory, XSplitMain__factory } from "../../typechain-types";
 import { OpenSeaSeaportConstants } from "../constants/seaport";
 import { ZERO_ADDRESS, ZERO_BYTES32 } from "../../src/constants/zero";
 import { ReservoirOracleFloorAsk, fetchOracleFloorAsk } from "../../src/api/reservoir-oracle-floor-ask";
 import { TraderClowderDelegateSignature } from "./delegatesignature";
 import { getChainRpcUrl } from "../../hardhat.config";
-import { impersonateAccount, setEtherBalance } from "../hardhat-util";
+import { impersonateAccount } from "../hardhat-util";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { SplitsClient } from '@0xsplits/splits-sdk'
-import { SplitMain } from "@0xsplits/splits-sdk/dist/typechain/SplitMain/ethereum";
 import { formatEther } from "ethers/lib/utils";
+import { SPLITMAIN_ADDRESS } from "./addresses";
 
 describe("Delegate", () => {
 
@@ -131,10 +129,38 @@ describe("Delegate", () => {
     expect(await traderClowderDelegateV1.symbol()).to.be.eq("CDS");
   });
 
-  it("Must list on Seaport", async () => {
+  it("Must have the correct constants", async () => {
     const { thirdParty,
       wethTokenContract, wethHolder,
-      owner: owner2 } = deployOutputs;
+      owner: owner2, clowderMain } = deployOutputs;
+
+    const splitId = await traderClowderDelegateV1.payoutSplit();
+
+    console.log("splitId", splitId);
+
+    // make sure they get the correct funds on their 0xsplit accounts    
+    const splitMainAddress = SPLITMAIN_ADDRESS[chainId];
+    const xSplit = XSplitMain__factory.connect(splitMainAddress,
+      ethers.provider);
+
+    // make sure split controller is the traderClowderDelegateV1
+    const splitController = await xSplit.getController(splitId);
+    expect(splitController).to.equal(traderClowderDelegateV1.address);
+
+    const cmain = await traderClowderDelegateV1.clowderMain();
+    expect(cmain).to.equal(clowderMain.address);
+    const distributorFee = await traderClowderDelegateV1.distributorFee();
+    const distributorAddress = await traderClowderDelegateV1.distributorAddress();
+    console.log("distributorFee", distributorFee);
+    console.log("distributorAddress", distributorAddress);
+
+    expect(await clowderMain.protocolFeeReceiver()).to.equal(distributorAddress);
+  });
+
+  it("Must list on Seaport and distribute some funds", async () => {
+    const { thirdParty,
+      wethTokenContract, wethHolder,
+      owner: owner2, clowderMain } = deployOutputs;
 
     // build and sign the order
     const sellOrder: SellOrderV1Basic = {
@@ -238,19 +264,18 @@ describe("Delegate", () => {
     const newSharesOwner2 = await traderClowderDelegateV1.balanceOf(owner2.address);
     console.log("newSharesOwner2", newSharesOwner2);
 
+
+    // make sure they get the correct funds on their 0xsplit accounts    
+    const splitMainAddress = SPLITMAIN_ADDRESS[chainId];
+    const xSplit = XSplitMain__factory.connect(splitMainAddress,
+      ethers.provider);
+
     await traderClowderDelegateV1.connect(thirdParty).distributeFunds(ZERO_ADDRESS,
       [thirdParty.address, owner2.address]); // fails if there arent all shareHolders, max: 500 shareHolders
 
     console.log("thirdParty.address:", thirdParty.address);
     console.log("owner2.address:", owner2.address);
-    const splitId = await traderClowderDelegateV1.payoutSplit();
 
-    console.log("splitId", splitId);
-
-    // make sure they get the correct funds on their 0xsplit accounts    
-    const ID = "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE";
-    const xSplit = XSplitMain__factory.connect(ID,
-      ethers.provider);
 
     const thirdPartyBalance = await xSplit.getETHBalance(thirdParty.address);
     console.log("thirdPartyBalance", formatEther(thirdPartyBalance));
@@ -322,8 +347,8 @@ describe("Delegate", () => {
     await traderClowderDelegateV1.connect(thirdParty).distributeFunds(wethTokenContract.address,
       [thirdParty.address, owner2.address]);
 
-    const ID = "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE";
-    const xSplit = XSplitMain__factory.connect(ID,
+    const splitMainAddress = SPLITMAIN_ADDRESS[chainId];
+    const xSplit = XSplitMain__factory.connect(splitMainAddress,
       ethers.provider);
 
     const protocolFeeM = await traderClowderDelegateV1.protocolFeeFractionFromSelling();
@@ -622,7 +647,7 @@ describe("Delegate with two buyers", () => {
     traderDomain = TraderClowderDelegateSignature.getDomain(chainId, traderClowderDelegateV1.address);
   });
 
-  it("Must list on Seaport", async () => {
+  it("Must list on Seaport and distribute some funds", async () => {
     const { thirdParty: thirdParty_1,
       wethTokenContract, wethHolder,
       owner: thirdParty_2 } = deployOutputs;
@@ -774,8 +799,8 @@ describe("Delegate with two buyers", () => {
     console.log("splitId", splitId);
 
     // make sure they get the correct funds on their 0xsplit accounts    
-    const ID = "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE";
-    const xSplit = XSplitMain__factory.connect(ID,
+    const splitMainAddress = SPLITMAIN_ADDRESS[chainId];
+    const xSplit = XSplitMain__factory.connect(splitMainAddress,
       ethers.provider);
 
     const thirdPartyBalance = await xSplit.getETHBalance(thirdParty_1.address);
