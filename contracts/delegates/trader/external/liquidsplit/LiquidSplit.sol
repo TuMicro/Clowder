@@ -3,6 +3,7 @@
 // - Removed the received function and the ReceiveETH event
 // - Removed the _distributorFee variable as we will solely rely on inheriting contract
 // - Made distributorAddress rely on the inheriting contract
+// - Moved out the Split creation to a function so it can be called from the inheriting contract
 pragma solidity ^0.8.13;
 
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
@@ -36,7 +37,7 @@ abstract contract LiquidSplit {
     uint256 public constant PERCENTAGE_SCALE = 1e6;
 
     ISplitMain public immutable splitMain;
-    address public immutable payoutSplit;
+    address public payoutSplit;
 
     /// -----------------------------------------------------------------------
     /// constructor
@@ -51,7 +52,9 @@ abstract contract LiquidSplit {
         splitMain = ISplitMain(_splitMain); /*Establish interface to splits contract*/
 
         /// interactions
+    }
 
+    function _createSplit() internal {
         // create dummy mutable split with this contract as controller;
         // recipients & distributorFee will be updated on first payout
         address[] memory recipients = new address[](2);

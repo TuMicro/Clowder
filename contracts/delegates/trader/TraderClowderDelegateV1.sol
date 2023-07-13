@@ -102,6 +102,8 @@ contract TraderClowderDelegateV1 is
             }
         }
 
+        _createSplit();
+
         return address(this);
 	}
 
