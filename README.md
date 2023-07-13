@@ -24,7 +24,7 @@ npx hardhat --network <networkName> deploy [options and flags]
 
 To also report gas:
 ```
-npx hardhat --network goerli deploy --report-gas
+npx hardhat --network hardhat deploy --report-gas
 ```
 
 Live networks:
@@ -42,9 +42,9 @@ npx hardhat --network arbitrum deploy
 
 npx hardhat --network goerli deploy
 
-npx hardhat --network polygon deploy
+npx hardhat --network polygon deploy --report-gas
 
-npx hardhat --network polygon deploy --reset
+npx hardhat --network polygon deploy --report-gas --reset 
 
 ```
 
@@ -80,7 +80,7 @@ npx hardhat --network mainnet etherscan-verify --api-key KEY --api-url URL
 If linked libraries are not verified, try something like this: ([source](https://github.com/nomicfoundation/hardhat/tree/main/packages/hardhat-verify#usage))
 
 ```
-npx hardhat npx hardhat verify --network polygon 0x8cf72a00b388bae1c4a1b9c227f2f3f367c559ef "0x877e76536de9843437c2f6cee8115a06bd6ad486" "0xAeB1D03929bF87F69888f381e73FBf75753d75AF" "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE"
+npx hardhat verify --network polygon 0xFEC59a05b6881d728d3aD921aF82D0AB4B08ffD9 "0xeA4AfB39d2603722cf402FD7f13ff2C87adD55B7" "0xAeB1D03929bF87F69888f381e73FBf75753d75AF" "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE"
 
 ```
 
