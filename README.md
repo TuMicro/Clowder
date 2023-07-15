@@ -46,6 +46,8 @@ npx hardhat --network polygon deploy --report-gas
 
 npx hardhat --network polygon deploy --report-gas --reset 
 
+npx hardhat --network mainnet deploy --report-gas --reset 
+
 ```
 
 Logs:

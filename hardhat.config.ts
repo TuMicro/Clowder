@@ -37,6 +37,7 @@ export const chainIds = {
   rinkeby: 4,
   evmos: 9001,
   goerli: 5,
+  "base": 8453,
 };
 
 export function getChainRpcUrl(chain: keyof typeof chainIds): string {
@@ -50,6 +51,9 @@ export function getChainRpcUrl(chain: keyof typeof chainIds): string {
       break;
     case "evmos":
       jsonRpcUrl = "https://eth.bd.evmos.org:8545";
+      break;
+    case "base":
+      jsonRpcUrl = "https://necessary-cool-panorama.base-mainnet.discover.quiknode.pro/" + process.env.QUICKNODE_API_KEY;
       break;
     default:
       if (!infuraApiKey) {
@@ -91,7 +95,7 @@ const config: HardhatUserConfig = {
     mainnet: {
       url: getChainRpcUrl('mainnet'),
       accounts: [process.env.PK_MAINNET_DEPLOYER ?? ""],
-      gasPrice: 16 * GWEI.toNumber(),
+      gasPrice: 15 * GWEI.toNumber(),
       verify: {
         etherscan: {
           apiKey: process.env.MAINNET_ETHERSCAN_API_KEY ?? "",
@@ -139,6 +143,7 @@ const config: HardhatUserConfig = {
       137: '0x346a7F06100A606eEA152f2281847Fa80f841894',
       4: '0xC103d1b071AFA925714eE55b2F4869300C4331C4', // but for rinkeby it will be a specific address, also for any chain with this id
       10: '0xC103d1b071AFA925714eE55b2F4869300C4331C4', // optimism deployer
+      8453: '0x346a7F06100A606eEA152f2281847Fa80f841894',
     },
   },
 
