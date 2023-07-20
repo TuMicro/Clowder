@@ -21,7 +21,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment,) {
     from: deployer,
   });
 
-  let libraries: { [libraryName: string]: string } = {
+  const libraries: { [libraryName: string]: string } = {
     "SeaportUtil": seaportUtilLibrary.address,
     'SellOrderV1Functions': sellOrderV1FunctionsLibrary.address,
     'TransferOrderV1Functions': transferOrderV1FunctionsLibrary.address,
@@ -88,7 +88,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment,) {
   const clowderFlashbuyer = await deploy("ClowderCalleeExample", {
     from: deployer,
     args: [
-      clowderMain.address, 
+      clowderMain.address,
       WETH_ADDRESS[Number(chainId)],
       protocolFeeReceiverAndFlashbuyerCaller,
     ],

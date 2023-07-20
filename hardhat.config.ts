@@ -14,6 +14,7 @@ import { GWEI } from "./test/constants/ether";
 // tasks
 // import "./tasks/execute_buy";
 import "./tasks/deployments";
+import "./tasks/get_gas_price";
 import { ONE_HOUR_IN_SECONDS } from "./test/constants/time";
 // import "./tasks/list_on_opensea";
 // import "./tasks/get_execution";
@@ -114,6 +115,17 @@ const config: HardhatUserConfig = {
         },
       },
     },
+    base: {
+      url: getChainRpcUrl('base'),
+      accounts: [process.env.PK_MAINNET_DEPLOYER ?? ""],
+      gasPrice: 100000050 + 10, // this doesnt actually entirely limit the gas, check https://github.com/ethereum-optimism/optimism-tutorial/tree/main/sdk-estimate-gas
+      verify: {
+        etherscan: {
+          apiKey: process.env.BASESCAN_API_KEY ?? "",
+          apiUrl: "https://api.basescan.org/",
+        },
+      },
+    },
     rinkeby: {
       url: getChainRpcUrl('rinkeby'),
       accounts: [process.env.PK_RINKEBY_DEPLOYER ?? ""],
@@ -155,7 +167,18 @@ const config: HardhatUserConfig = {
     apiKey: {
       mainnet: process.env.MAINNET_ETHERSCAN_API_KEY ?? "",
       polygon: process.env.POLYGONSCAN_API_KEY ?? "",
+      base: process.env.BASESCAN_API_KEY ?? "",
     },
+    customChains: [
+      {
+        network: "base",
+        chainId: 8453,
+        urls: {
+          apiURL: "https://api.basescan.org/api",
+          browserURL: "https://basescan.org"
+        }
+      }
+    ]
   },
 
 };

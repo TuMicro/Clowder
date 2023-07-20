@@ -48,6 +48,8 @@ npx hardhat --network polygon deploy --report-gas --reset
 
 npx hardhat --network mainnet deploy --report-gas --reset 
 
+npx hardhat --network base deploy --report-gas
+
 ```
 
 Logs:
@@ -83,6 +85,8 @@ If linked libraries are not verified, try something like this: ([source](https:/
 
 ```
 npx hardhat verify --network mainnet 0x06eb6e36b8fe7b7f850bd3441b15046be6e85964 "0x6f6faa6ffc43d8d4ed140f3809a38d4773d35aa6" "0xAeB1D03929bF87F69888f381e73FBf75753d75AF" "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE"
+
+npx hardhat verify --network base 0xd600a8a3aa8dc1921fb9917fc86f4f6180b1724d "0xa278e763c368ff1eb7a37a3c7300100c1f0c4b38" "0xAeB1D03929bF87F69888f381e73FBf75753d75AF" "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE"
 
 ```
 
@@ -133,6 +137,13 @@ Showing the commits tree:
 ```
 git log --oneline --graph --decorate --all
 ```
+
+Show the gas price before deploying:
+
+```
+npx hardhat  get_gas_price --network base 
+```
+
 
 ## Licensing
 
