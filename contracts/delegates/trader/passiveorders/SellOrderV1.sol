@@ -117,7 +117,7 @@ library SellOrderV1Functions {
     }
 
     function validateSellOrdersParameters(
-        mapping(address => mapping(uint256 => bool)) storage _isUsableNonce,
+        mapping(address => mapping(uint256 => bool)) storage _isUnusableNonce,
         IERC20 ownershipToken,
         SellOrderV1[] calldata orders
     ) public view returns (uint256, uint256, uint256) {
@@ -203,7 +203,7 @@ library SellOrderV1Functions {
 
             // Validate order nonce usability
             require(
-                !_isUsableNonce[order.signer][order.nonce],
+                !_isUnusableNonce[order.signer][order.nonce],
                 "Order nonce is unusable"
             );
             // counting the "votes" in favor of this price

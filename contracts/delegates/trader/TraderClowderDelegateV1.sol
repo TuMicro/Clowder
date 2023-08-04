@@ -41,11 +41,11 @@ contract TraderClowderDelegateV1 is
 
     bytes32 public EIP712_DOMAIN_SEPARATOR;
 
-    // user => nonce => isUsableSellNonce
-    mapping(address => mapping(uint256 => bool)) public isUsableSellNonce;
+    // user => nonce => isUnusableSellNonce
+    mapping(address => mapping(uint256 => bool)) public isUnusableSellNonce;
 
-    // user => nonce => isUsableTransferlNonce
-    mapping(address => mapping(uint256 => bool)) public isUsableTransferlNonce;
+    // user => nonce => isUnusableTransferlNonce
+    mapping(address => mapping(uint256 => bool)) public isUnusableTransferlNonce;
 
 
     /* libraries */
@@ -146,7 +146,7 @@ contract TraderClowderDelegateV1 is
         );
 
         for (uint256 i = 0; i < sellOrderNonces.length; i++) {
-            isUsableSellNonce[msg.sender][sellOrderNonces[i]] = true; // cancelled
+            isUnusableSellNonce[msg.sender][sellOrderNonces[i]] = true; // cancelled
         }
     }
 
@@ -159,7 +159,7 @@ contract TraderClowderDelegateV1 is
         );
 
         for (uint256 i = 0; i < transferOrderNonces.length; i++) {
-            isUsableTransferlNonce[msg.sender][transferOrderNonces[i]] = true; // cancelled
+            isUnusableTransferlNonce[msg.sender][transferOrderNonces[i]] = true; // cancelled
         }
     }
 
@@ -182,7 +182,7 @@ contract TraderClowderDelegateV1 is
             uint256 maxOfMinProceeds,
             uint256 realContributionOnBoard
         ) = SellOrderV1Functions.validateSellOrdersParameters(
-                isUsableSellNonce,
+                isUnusableSellNonce,
                 this,
                 orders
             );
@@ -222,7 +222,7 @@ contract TraderClowderDelegateV1 is
         (
             uint256 realContributionOnBoard
         ) = TransferOrderV1Functions.validateTransferOrdersParameters(
-                isUsableTransferlNonce,
+                isUnusableTransferlNonce,
                 this,
                 orders
         );

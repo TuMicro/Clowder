@@ -92,7 +92,7 @@ library TransferOrderV1Functions {
     }
 
     function validateTransferOrdersParameters(
-        mapping(address => mapping(uint256 => bool)) storage _isUsableNonce,
+        mapping(address => mapping(uint256 => bool)) storage _isUnusableNonce,
         IERC20 ownershipToken,
         TransferOrderV1[] calldata orders
     ) public view returns (uint256) {
@@ -137,7 +137,7 @@ library TransferOrderV1Functions {
 
             // Validate order nonce usability
             require(
-                !_isUsableNonce[order.signer][order.nonce],
+                !_isUnusableNonce[order.signer][order.nonce],
                 "Order nonce is unusable"
             );
             // counting the "votes" in favor of this price
