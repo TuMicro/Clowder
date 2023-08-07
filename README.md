@@ -147,7 +147,7 @@ npx hardhat  get_gas_price --network base
 
 ## Licensing
 
-The primary license for the Core smart contracts of Clowder.club is the Business Source License 1.1 (`BUSL-1.1`), see `LICENSE`.
+The primary license for the Core smart contracts of Clowder.club is the Business Source License 1.1 (`BUSL-1.1`), see [`LICENSE`](./LICENSE).
 
 ### Exceptions
 
