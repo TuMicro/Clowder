@@ -77,10 +77,7 @@ Verification:
 
 ```
 # verify source code (make sure to set the config on the respective network)
-npx hardhat --network polygon etherscan-verify --solc-input
-
-# if the above fails, try this:
-npx hardhat --network mainnet etherscan-verify --api-key KEY --api-url URL
+npx hardhat --network optimism etherscan-verify --solc-input
 ```
 
 If linked libraries are not verified, try something like this: ([source](https://github.com/nomicfoundation/hardhat/tree/main/packages/hardhat-verify#usage))
@@ -89,6 +86,8 @@ If linked libraries are not verified, try something like this: ([source](https:/
 npx hardhat verify --network mainnet 0x06eb6e36b8fe7b7f850bd3441b15046be6e85964 "0x6f6faa6ffc43d8d4ed140f3809a38d4773d35aa6" "0xAeB1D03929bF87F69888f381e73FBf75753d75AF" "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE"
 
 npx hardhat verify --network base 0xd600a8a3aa8dc1921fb9917fc86f4f6180b1724d "0xa278e763c368ff1eb7a37a3c7300100c1f0c4b38" "0xAeB1D03929bF87F69888f381e73FBf75753d75AF" "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE"
+
+npx hardhat verify --network optimism 0x203d231e2e7c0380971D58C4bf37E5Ac7F6B9D8c "0xf610bBC3DB935D35d54cEB53b6fDa0FB65c2F16b" "0xAeB1D03929bF87F69888f381e73FBf75753d75AF" "0x2ed6c4B5dA6378c7897AC67Ba9e43102Feb694EE"
 
 ```
 
