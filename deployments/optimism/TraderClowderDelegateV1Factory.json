@@ -1,0 +1,96 @@
+{
+  "address": "0x06Eb6E36B8fe7B7f850Bd3441b15046bE6E85964",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_implementation",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address[]",
+          "name": "accounts",
+          "type": "address[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "contributions",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "uint256",
+          "name": "totalContributions",
+          "type": "uint256"
+        }
+      ],
+      "name": "createNewClone",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "implementationContract",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x7351dc37b74da3441fff15271d1a5b2e11fbeacce65a0280c85dff6848af7343",
+  "receipt": {
+    "to": null,
+    "from": "0x346a7F06100A606eEA152f2281847Fa80f841894",
+    "contractAddress": "0x06Eb6E36B8fe7B7f850Bd3441b15046bE6E85964",
+    "transactionIndex": 6,
+    "gasUsed": "289146",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x22e3e8de5836f8b5ebb33cd9d35cebacaf40d1a93ceb09b9e86f5ac8b626131e",
+    "transactionHash": "0x7351dc37b74da3441fff15271d1a5b2e11fbeacce65a0280c85dff6848af7343",
+    "logs": [],
+    "blockNumber": 108169122,
+    "cumulativeGasUsed": "1274323",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0x203d231e2e7c0380971D58C4bf37E5Ac7F6B9D8c"
+  ],
+  "numDeployments": 1,
+  "solcInputHash": "1679e9aeb6ed67b566e3a7dcd83232cb",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.13+commit.abaa5c0e\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_implementation\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"accounts\",\"type\":\"address[]\"},{\"internalType\":\"uint256[]\",\"name\":\"contributions\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256\",\"name\":\"totalContributions\",\"type\":\"uint256\"}],\"name\":\"createNewClone\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"implementationContract\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/delegates/trader/TraderClowderDelegateV1Factory.sol\":\"TraderClowderDelegateV1Factory\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[],\"viaIR\":true},\"sources\":{\"@openzeppelin/contracts/proxy/Clones.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v4.9.0) (proxy/Clones.sol)\\n\\npragma solidity ^0.8.0;\\n\\n/**\\n * @dev https://eips.ethereum.org/EIPS/eip-1167[EIP 1167] is a standard for\\n * deploying minimal proxy contracts, also known as \\\"clones\\\".\\n *\\n * > To simply and cheaply clone contract functionality in an immutable way, this standard specifies\\n * > a minimal bytecode implementation that delegates all calls to a known, fixed address.\\n *\\n * The library includes functions to deploy a proxy using either `create` (traditional deployment) or `create2`\\n * (salted deterministic deployment). It also includes functions to predict the addresses of clones deployed using the\\n * deterministic method.\\n *\\n * _Available since v3.4._\\n */\\nlibrary Clones {\\n    /**\\n     * @dev Deploys and returns the address of a clone that mimics the behaviour of `implementation`.\\n     *\\n     * This function uses the create opcode, which should never revert.\\n     */\\n    function clone(address implementation) internal returns (address instance) {\\n        /// @solidity memory-safe-assembly\\n        assembly {\\n            // Cleans the upper 96 bits of the `implementation` word, then packs the first 3 bytes\\n            // of the `implementation` address with the bytecode before the address.\\n            mstore(0x00, or(shr(0xe8, shl(0x60, implementation)), 0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000))\\n            // Packs the remaining 17 bytes of `implementation` with the bytecode after the address.\\n            mstore(0x20, or(shl(0x78, implementation), 0x5af43d82803e903d91602b57fd5bf3))\\n            instance := create(0, 0x09, 0x37)\\n        }\\n        require(instance != address(0), \\\"ERC1167: create failed\\\");\\n    }\\n\\n    /**\\n     * @dev Deploys and returns the address of a clone that mimics the behaviour of `implementation`.\\n     *\\n     * This function uses the create2 opcode and a `salt` to deterministically deploy\\n     * the clone. Using the same `implementation` and `salt` multiple time will revert, since\\n     * the clones cannot be deployed twice at the same address.\\n     */\\n    function cloneDeterministic(address implementation, bytes32 salt) internal returns (address instance) {\\n        /// @solidity memory-safe-assembly\\n        assembly {\\n            // Cleans the upper 96 bits of the `implementation` word, then packs the first 3 bytes\\n            // of the `implementation` address with the bytecode before the address.\\n            mstore(0x00, or(shr(0xe8, shl(0x60, implementation)), 0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000))\\n            // Packs the remaining 17 bytes of `implementation` with the bytecode after the address.\\n            mstore(0x20, or(shl(0x78, implementation), 0x5af43d82803e903d91602b57fd5bf3))\\n            instance := create2(0, 0x09, 0x37, salt)\\n        }\\n        require(instance != address(0), \\\"ERC1167: create2 failed\\\");\\n    }\\n\\n    /**\\n     * @dev Computes the address of a clone deployed using {Clones-cloneDeterministic}.\\n     */\\n    function predictDeterministicAddress(\\n        address implementation,\\n        bytes32 salt,\\n        address deployer\\n    ) internal pure returns (address predicted) {\\n        /// @solidity memory-safe-assembly\\n        assembly {\\n            let ptr := mload(0x40)\\n            mstore(add(ptr, 0x38), deployer)\\n            mstore(add(ptr, 0x24), 0x5af43d82803e903d91602b57fd5bf3ff)\\n            mstore(add(ptr, 0x14), implementation)\\n            mstore(ptr, 0x3d602d80600a3d3981f3363d3d373d3d3d363d73)\\n            mstore(add(ptr, 0x58), salt)\\n            mstore(add(ptr, 0x78), keccak256(add(ptr, 0x0c), 0x37))\\n            predicted := keccak256(add(ptr, 0x43), 0x55)\\n        }\\n    }\\n\\n    /**\\n     * @dev Computes the address of a clone deployed using {Clones-cloneDeterministic}.\\n     */\\n    function predictDeterministicAddress(\\n        address implementation,\\n        bytes32 salt\\n    ) internal view returns (address predicted) {\\n        return predictDeterministicAddress(implementation, salt, address(this));\\n    }\\n}\\n\",\"keccak256\":\"0x01f055f5c26ba25d7f83e9aa9ba877fbea4d0bf22227de046ea67494bc932999\",\"license\":\"MIT\"},\"contracts/delegates/trader/ITraderClowderDelegateV1.sol\":{\"content\":\"// SPDX-License-Identifier: BUSL-1.1\\npragma solidity >=0.8.13;\\n\\ninterface ITraderClowderDelegateV1 {\\n    function createNewClone(\\n        address[] memory accounts,\\n        uint256[] memory contributions,\\n        uint256 totalContributions\\n    ) external returns (address);\\n}\\n\",\"keccak256\":\"0x20f9bc434b6cc3bc81f0df5460ca0a20a583b616fb398954c115848568f2c8c8\",\"license\":\"BUSL-1.1\"},\"contracts/delegates/trader/TraderClowderDelegateV1Factory.sol\":{\"content\":\"// SPDX-License-Identifier: BUSL-1.1\\npragma solidity >=0.8.13;\\n\\nimport \\\"@openzeppelin/contracts/proxy/Clones.sol\\\";\\nimport {ITraderClowderDelegateV1} from \\\"./ITraderClowderDelegateV1.sol\\\";\\n\\ncontract TraderClowderDelegateV1Factory is ITraderClowderDelegateV1 {\\n    address public immutable implementationContract;\\n\\n    constructor(address _implementation) {\\n        implementationContract = _implementation;\\n    }\\n\\n    function createNewClone(\\n        address[] memory accounts,\\n        uint256[] memory contributions,\\n        uint256 totalContributions\\n    ) external returns (address) {\\n        address clone = Clones.clone(implementationContract);\\n        ITraderClowderDelegateV1(clone).createNewClone(\\n            accounts,\\n            contributions,\\n            totalContributions\\n        );\\n        return clone;\\n    }\\n}\\n\",\"keccak256\":\"0xb36445e37caf3d3e2d90ef8c7303948f81a7eecbecad4bdebc7a448d5810b358\",\"license\":\"BUSL-1.1\"}},\"version\":1}",
+  "bytecode": "0x60a03461007157601f6104ca38819003918201601f19168301916001600160401b038311848410176100765780849260209460405283398101031261007157516001600160a01b03811681036100715760805260405161043d908161008d823960805181818161020d01526102f50152f35b600080fd5b634e487b7160e01b600052604160045260246000fdfe60806040526004361015610013575b600080fd5b6000803560e01c9081635c64f6191461003e57506399e7d0561461003657600080fd5b61000e6101f6565b346100fa5760603660031901126100fa576004359067ffffffffffffffff908183116100fa57366023840112156100fa57826004013561007d81610160565b9361008b6040519586610131565b81855260209160248387019160051b8301019136831161011657602401905b8282106100fd57505050506024359182116100fa576100f66100dc846100d33660048701610198565b604435916102e3565b6040516001600160a01b0390911681529081906020820190565b0390f35b80fd5b838091833561010b81610187565b8152019101906100aa565b8480fd5b50634e487b7160e01b600052604160045260246000fd5b90601f8019910116810190811067ffffffffffffffff82111761015357604052565b61015b61011a565b604052565b60209067ffffffffffffffff811161017a575b60051b0190565b61018261011a565b610173565b6001600160a01b0381160361000e57565b81601f8201121561000e578035916101af83610160565b926101bd6040519485610131565b808452602092838086019260051b82010192831161000e578301905b8282106101e7575050505090565b813581529083019083016101d9565b503461000e57600036600319011261000e576040517f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03168152602090f35b9081602091031261000e575161025181610187565b90565b93929160608501606086528251809152608086019060208094019060005b8181106102b9575050508581038387015282808351928381520192019260005b8281106102a55750505060409150930152565b845184529381019392810192600101610292565b82516001600160a01b031684529285019291850191600101610272565b506040513d6000823e3d90fd5b6e5af43d82803e903d91602b57fd5bf37f0000000000000000000000000000000000000000000000000000000000000000763d602d80600a3d3981f3363d3d373d3d3d363d7300000062ffffff8260881c161760005260781b17602052603760096000f0926001600160a01b03841680156103c95761037e93600060209460405196879586948593635c64f61960e01b855260048501610254565b03925af180156103bc575b610391575090565b6103b19060203d81116103b5575b6103a98183610131565b81019061023c565b5090565b503d61039f565b6103c46102d6565b610389565b60405162461bcd60e51b8152602060048201526016602482015275115490cc4c4d8dce8818dc99585d194819985a5b195960521b6044820152606490fdfea2646970667358221220ed21444e62d8b0691fb5396def61019b5c4d04a20271c7ea3fcc519905453d7064736f6c634300080d0033",
+  "deployedBytecode": "0x60806040526004361015610013575b600080fd5b6000803560e01c9081635c64f6191461003e57506399e7d0561461003657600080fd5b61000e6101f6565b346100fa5760603660031901126100fa576004359067ffffffffffffffff908183116100fa57366023840112156100fa57826004013561007d81610160565b9361008b6040519586610131565b81855260209160248387019160051b8301019136831161011657602401905b8282106100fd57505050506024359182116100fa576100f66100dc846100d33660048701610198565b604435916102e3565b6040516001600160a01b0390911681529081906020820190565b0390f35b80fd5b838091833561010b81610187565b8152019101906100aa565b8480fd5b50634e487b7160e01b600052604160045260246000fd5b90601f8019910116810190811067ffffffffffffffff82111761015357604052565b61015b61011a565b604052565b60209067ffffffffffffffff811161017a575b60051b0190565b61018261011a565b610173565b6001600160a01b0381160361000e57565b81601f8201121561000e578035916101af83610160565b926101bd6040519485610131565b808452602092838086019260051b82010192831161000e578301905b8282106101e7575050505090565b813581529083019083016101d9565b503461000e57600036600319011261000e576040517f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03168152602090f35b9081602091031261000e575161025181610187565b90565b93929160608501606086528251809152608086019060208094019060005b8181106102b9575050508581038387015282808351928381520192019260005b8281106102a55750505060409150930152565b845184529381019392810192600101610292565b82516001600160a01b031684529285019291850191600101610272565b506040513d6000823e3d90fd5b6e5af43d82803e903d91602b57fd5bf37f0000000000000000000000000000000000000000000000000000000000000000763d602d80600a3d3981f3363d3d373d3d3d363d7300000062ffffff8260881c161760005260781b17602052603760096000f0926001600160a01b03841680156103c95761037e93600060209460405196879586948593635c64f61960e01b855260048501610254565b03925af180156103bc575b610391575090565b6103b19060203d81116103b5575b6103a98183610131565b81019061023c565b5090565b503d61039f565b6103c46102d6565b610389565b60405162461bcd60e51b8152602060048201526016602482015275115490cc4c4d8dce8818dc99585d194819985a5b195960521b6044820152606490fdfea2646970667358221220ed21444e62d8b0691fb5396def61019b5c4d04a20271c7ea3fcc519905453d7064736f6c634300080d0033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {},
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": null
+  }
+}

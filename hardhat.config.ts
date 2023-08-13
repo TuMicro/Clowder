@@ -136,7 +136,13 @@ const config: HardhatUserConfig = {
     },
     optimism: {
       url: getChainRpcUrl('optimism-mainnet'),
-      accounts: [process.env.PK_RINKEBY_DEPLOYER ?? ""],
+      accounts: [process.env.PK_MAINNET_DEPLOYER ?? ""],
+      verify: {
+        etherscan: {
+          apiKey: process.env.OPTIMISM_ETHERSCAN_API_KEY ?? "",
+          apiUrl: "https://api-optimistic.etherscan.io/",
+        },
+      },
     },
     arbitrum: {
       url: getChainRpcUrl('arbitrum-mainnet'),
@@ -154,7 +160,7 @@ const config: HardhatUserConfig = {
       1: '0x346a7F06100A606eEA152f2281847Fa80f841894',
       137: '0x346a7F06100A606eEA152f2281847Fa80f841894',
       4: '0xC103d1b071AFA925714eE55b2F4869300C4331C4', // but for rinkeby it will be a specific address, also for any chain with this id
-      10: '0xC103d1b071AFA925714eE55b2F4869300C4331C4', // optimism deployer
+      10: '0x346a7F06100A606eEA152f2281847Fa80f841894', // optimism deployer
       8453: '0x346a7F06100A606eEA152f2281847Fa80f841894',
     },
   },
@@ -168,6 +174,7 @@ const config: HardhatUserConfig = {
       mainnet: process.env.MAINNET_ETHERSCAN_API_KEY ?? "",
       polygon: process.env.POLYGONSCAN_API_KEY ?? "",
       base: process.env.BASESCAN_API_KEY ?? "",
+      optimism: process.env.OPTIMISM_ETHERSCAN_API_KEY ?? "",
     },
     customChains: [
       {

@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { RESERVOIR_ORACLE_VERIFIER_ADDRESS, SPLITMAIN_ADDRESS, WETH_ADDRESS } from '../test/ClowderMain/addresses';
+import { RESERVOIR_ORACLE_VERIFIER_ADDRESS, SPLITMAIN_ADDRESS, WETH_ADDRESS, isOfTypeReadyToDeploy } from '../test/ClowderMain/addresses';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment,) {
   const { deployments, getNamedAccounts, getChainId, ethers } = hre;
@@ -8,6 +8,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment,) {
   const { deployer } = await getNamedAccounts();
   const chainId = await getChainId();
   const chainId_n = Number(chainId);
+
+  if (!isOfTypeReadyToDeploy(chainId_n)) {
+    throw Error("chainId not ready to deploy");
+  }
 
   console.log("Deploying to network " + chainId + " 🚀");
 
@@ -27,21 +31,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment,) {
     'TransferOrderV1Functions': transferOrderV1FunctionsLibrary.address,
   };
 
-  if (chainId_n === 4) { // only on rinkeby
-    // TODO: separate the marketplace-listable version of Clowder into another contract
-    const OpenSeaUtilLibrary = await deploy("OpenSeaUtil", {
-      from: deployer,
-    });
-    const LooksRareUtilLibrary = await deploy("LooksRareUtil", {
-      from: deployer,
-    });
-    libraries = {
-      ...libraries,
-      "OpenSeaUtil": OpenSeaUtilLibrary.address,
-      'LooksRareUtil': LooksRareUtilLibrary.address,
-    }
-  }
-
   const nonce = await ethers.provider.getTransactionCount(deployer);
   const clowderMainAddress = ethers.utils.getContractAddress({
     from: deployer,
@@ -53,8 +42,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment,) {
     from: deployer,
     args: [
       clowderMainAddress,
-      RESERVOIR_ORACLE_VERIFIER_ADDRESS[Number(chainId)],
-      SPLITMAIN_ADDRESS[Number(chainId)],
+      RESERVOIR_ORACLE_VERIFIER_ADDRESS[chainId_n],
+      SPLITMAIN_ADDRESS[chainId_n],
     ],
     libraries: libraries,
   });
@@ -74,7 +63,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment,) {
   const clowderMain = await deploy("ClowderMain", {
     from: deployer,
     args: [
-      WETH_ADDRESS[Number(chainId)],
+      WETH_ADDRESS[chainId_n],
       protocolFeeReceiverAndFlashbuyerCaller,
       delegateFactory.address,
     ],
@@ -89,7 +78,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment,) {
     from: deployer,
     args: [
       clowderMain.address,
-      WETH_ADDRESS[Number(chainId)],
+      WETH_ADDRESS[chainId_n],
       protocolFeeReceiverAndFlashbuyerCaller,
     ],
   });
