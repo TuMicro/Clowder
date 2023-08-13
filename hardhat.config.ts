@@ -39,6 +39,7 @@ export const chainIds = {
   evmos: 9001,
   goerli: 5,
   "base": 8453,
+  "zora": 7777777,
 };
 
 export function getChainRpcUrl(chain: keyof typeof chainIds): string {
@@ -55,6 +56,9 @@ export function getChainRpcUrl(chain: keyof typeof chainIds): string {
       break;
     case "base":
       jsonRpcUrl = "https://necessary-cool-panorama.base-mainnet.discover.quiknode.pro/" + process.env.QUICKNODE_API_KEY;
+      break;
+    case 'zora':
+      jsonRpcUrl = "https://rpc.zora.energy/";
       break;
     default:
       if (!infuraApiKey) {
@@ -125,6 +129,10 @@ const config: HardhatUserConfig = {
           apiUrl: "https://api.basescan.org/",
         },
       },
+    },
+    zora: {
+      url: getChainRpcUrl('zora'),
+      accounts: [process.env.PK_MAINNET_DEPLOYER ?? ""],
     },
     rinkeby: {
       url: getChainRpcUrl('rinkeby'),

@@ -52,6 +52,8 @@ npx hardhat --network base deploy --report-gas
 
 npx hardhat --network optimism deploy --report-gas
 
+npx hardhat --network zora deploy --report-gas
+
 ```
 
 Logs:
